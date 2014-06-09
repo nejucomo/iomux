@@ -123,9 +123,17 @@ class CommandlineArgumentTests (unittest.TestCase):
         opts = parse_args(['--unit-test-without-coverage'])
         self.assertIs(run_unit_tests_without_coverage, opts.mainfunc)
 
-    def test_exclusive_options(self):
+    def test_exclusive_unittest_options(self):
         with StdoutCapture():
             self.assertRaises(SystemExit, parse_args, ['--unit-test', '--unit-test-without-coverage'])
+
+    def test_exclusive_test_option_and_command(self):
+        with StdoutCapture():
+            self.assertRaises(SystemExit, parse_args, ['--unit-test', 'echo'])
+
+    def test_colliding_arguments_in_subcommands(self):
+        opts = parse_args(['echo', '--unit-test'])
+        self.assertEqual([['echo', '--unit-test']], opts.COMMANDS)
 
     def test_no_args(self):
         with StdoutCapture() as helpcap:
