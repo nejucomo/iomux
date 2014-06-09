@@ -99,6 +99,22 @@ def run_iomux(opts):
     raise NotImplementedError(`run_iomux`)
 
 
+class FormatWriter (object):
+    def __init__(self, outstream, template, **paramgens):
+        self._f = outstream
+        self._tmpl = template
+        self._pgens = paramgens
+
+    def write(self, message):
+        params = dict( (k, f()) for (k, f) in self._pgens.iteritems() )
+        params['message'] = message
+        data = self._tmpl.format(**params)
+        self._f.write(data + '\n')
+
+    def close(self):
+        self._f.close()
+
+
 
 # Unit tests:
 def run_unit_tests_with_coverage(opts):
@@ -179,6 +195,26 @@ class CommandlineArgumentTests (unittest.TestCase):
     def test_empty_command_double_dashdash(self):
         with StdoutCapture():
             self.assertRaises(SystemExit, parse_args, ['cat', '--', '--', 'echo'])
+
+
+class FormatWriterTests (unittest.TestCase):
+    def test_format_writer(self):
+        f = StringIO()
+
+        def counter():
+            counter.c += 1
+            return counter.c
+        counter.c = 0
+
+        fw = FormatWriter(f, '{const} {counter} {message}', const=lambda : '<A constant>', counter=counter)
+        fw.write('foo')
+        fw.write('bar')
+
+        self.assertEqual('<A constant> 1 foo\n<A constant> 2 bar\n', f.getvalue())
+
+        fw.close()
+
+        self.assertRaises(ValueError, f.getvalue) # operation on closed file.
 
 
 class StdoutCapture (object):
