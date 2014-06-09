@@ -42,6 +42,9 @@ def parse_args(args):
                        const=run_unit_tests_without_coverage,
                        help='Run internal unit tests without coverage analysis.')
 
+    if len(args) == 0:
+        args = ['--help']
+
     return p.parse_args(args)
 
 
