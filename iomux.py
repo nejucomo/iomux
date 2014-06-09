@@ -116,9 +116,9 @@ class WriteFileFilter (object):
         self._f.close()
 
 
-class FormatWriter (object):
+class FormatWriter (WriteFileFilter):
     def __init__(self, outstream, template, **paramgens):
-        self._f = outstream
+        WriteFileFilter.__init__(self, outstream)
         self._tmpl = template
         self._pgens = paramgens
 
@@ -127,9 +127,6 @@ class FormatWriter (object):
         params['message'] = message
         data = self._tmpl.format(**params)
         self._f.write(data + '\n')
-
-    def close(self):
-        self._f.close()
 
 
 class Timestamper (object):
@@ -141,9 +138,9 @@ class Timestamper (object):
         return time.strftime(self.format, time.gmtime(self.time()))
 
 
-class LineBuffer (object):
+class LineBuffer (WriteFileFilter):
     def __init__(self, outstream):
-        self._f = outstream
+        WriteFileFilter.__init__(self, outstream)
         self._buf = ''
 
     def write(self, data):
