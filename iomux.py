@@ -5,7 +5,7 @@ import sys
 import argparse
 import unittest
 import tempfile
-from coverage import coverage
+import subprocess
 
 
 DESCRIPTION = """
@@ -19,8 +19,7 @@ with 0, otherwise it is the first non-zero child's status.
 
 def main(args = sys.argv[1:]):
     opts = parse_args(args)
-    if opts.unit_test:
-        unittest_main()
+    sys.exit(opts.mainfunc(opts))
 
 
 def parse_args(args):
@@ -28,26 +27,40 @@ def parse_args(args):
         description=DESCRIPTION,
         formatter_class=argparse.RawTextHelpFormatter)
 
-    p.add_argument('--unit-test',
-                   action='store_true',
-                   help='Run internal unit tests, then exit.')
+    group = p.add_mutually_exclusive_group(required=True)
+
+    group.add_argument('--unit-test',
+                       dest='mainfunc',
+                       action='store_const',
+                       const=run_unit_tests_with_coverage,
+                       help='Run internal unit tests with coverage reporting.')
+
+    group.add_argument('--unit-test-without-coverage',
+                       dest='mainfunc',
+                       action='store_const',
+                       const=run_unit_tests_without_coverage,
+                       help='Run internal unit tests without coverage analysis.')
 
     return p.parse_args(args)
 
 
-def unittest_main():
+def run_unit_tests_with_coverage(opts):
+    prog = os.path.abspath(sys.argv[0])
+    covargs = ['coverage', 'run', '--branch', prog, '--unit-test-without-coverage']
+
     covdir = tempfile.mkdtemp(prefix='coverage.', suffix='.iomux')
-    covdata = os.path.join(covdir, 'coverage.data')
-    print 'Saving unittest coverage data in: %r' % (covdata,)
-    c = coverage(branch=True, data_file=covdata)
-    c.start()
-    try:
-        unittest.main(argv=sys.argv[:1], verbosity=2)
-    except SystemExit, e:
-        c.stop()
-        print 'Generating html coverage report in: %r' % (covdir,)
-        c.html_report(directory=covdir)
-        raise e
+    os.chdir(covdir)
+    print 'Generating coverage data and report in: %r' % (covdir,)
+
+    print 'Running: %r' % (covargs,)
+    status = subprocess.call(covargs)
+
+    subprocess.call(['coverage', 'html', '--dir', '.'])
+    return status
+
+
+def run_unit_tests_without_coverage(opts):
+    unittest.main(argv=sys.argv[:1], verbosity=2)
 
 
 
@@ -55,7 +68,11 @@ def unittest_main():
 class CommandlineArgumentTests (unittest.TestCase):
     def test_parse_unit_test(self):
         opts = parse_args(['--unit-test'])
-        self.assertIs(True, opts.unit_test)
+        self.assertIs(run_unit_tests_with_coverage, opts.mainfunc)
+
+    def test_parse_unit_test_without_coverage(self):
+        opts = parse_args(['--unit-test-without-coverage'])
+        self.assertIs(run_unit_tests_without_coverage, opts.mainfunc)
 
 
 
