@@ -102,6 +102,20 @@ def run_iomux(opts):
     raise NotImplementedError(`run_iomux`)
 
 
+class WriteFileFilter (object):
+    def __init__(self, outstream):
+        self._f = outstream
+
+    def write(self, data):
+        self._f.write(data)
+
+    def flush(self):
+        self._f.flush()
+
+    def close(self):
+        self._f.close()
+
+
 class FormatWriter (object):
     def __init__(self, outstream, template, **paramgens):
         self._f = outstream
@@ -226,7 +240,7 @@ class CommandlineArgumentTests (unittest.TestCase):
             self.assertRaises(SystemExit, parse_args, ['cat', '--', '--', 'echo'])
 
 
-class WritefileFilterTests (unittest.TestCase):
+class WriteFileFilterTests (unittest.TestCase):
     def test_writefilefilter(self):
         class MockFile (object):
             def __init__(self):
@@ -239,7 +253,7 @@ class WritefileFilterTests (unittest.TestCase):
                 self._ops.append(('close', ))
 
         mockfile = MockFile()
-        wff = WritefileFilter(mockfile)
+        wff = WriteFileFilter(mockfile)
         self.assertEqual([], mockfile._ops)
 
         wff.write('foo')
