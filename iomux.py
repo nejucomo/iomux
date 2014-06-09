@@ -97,6 +97,10 @@ class CommandlineArgumentTests (unittest.TestCase):
 
         self.assertEqual(helpcap.get_outputs(), noargscap.get_outputs())
 
+    def test_no_dash_dash_echo(self):
+        opts = parse_args(['echo'])
+        self.assertIs(run_iomux, opts.mainfunc)
+        self.assertEqual([['echo']], opts.COMMANDS)
 
 
 class StdoutCapture (object):
