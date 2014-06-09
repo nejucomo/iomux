@@ -226,6 +226,42 @@ class CommandlineArgumentTests (unittest.TestCase):
             self.assertRaises(SystemExit, parse_args, ['cat', '--', '--', 'echo'])
 
 
+class WritefileFilterTests (unittest.TestCase):
+    def test_writefilefilter(self):
+        class MockFile (object):
+            def __init__(self):
+                self._ops = []
+            def write(self, data):
+                self._ops.append(('write', data))
+            def flush(self):
+                self._ops.append(('flush', ))
+            def close(self):
+                self._ops.append(('close', ))
+
+        mockfile = MockFile()
+        wff = WritefileFilter(mockfile)
+        self.assertEqual([], mockfile._ops)
+
+        wff.write('foo')
+        self.assertEqual([('write', 'foo')], mockfile._ops)
+
+        wff.write('bar')
+        self.assertEqual([('write', 'foo'), ('write', 'bar')], mockfile._ops)
+
+        wff.flush()
+        self.assertEqual([('write', 'foo'), ('write', 'bar'), ('flush',)], mockfile._ops)
+
+        wff.write('quz')
+        self.assertEqual(
+            [('write', 'foo'), ('write', 'bar'), ('flush',), ('write', 'quz')],
+            mockfile._ops)
+
+        wff.close()
+        self.assertEqual(
+            [('write', 'foo'), ('write', 'bar'), ('flush',), ('write', 'quz'), ('close',)],
+            mockfile._ops)
+
+
 class FormatWriterTests (unittest.TestCase):
     def test_format_writer(self):
         f = StringIO()
