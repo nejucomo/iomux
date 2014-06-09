@@ -23,29 +23,68 @@ def main(args = sys.argv[1:]):
     sys.exit(opts.mainfunc(opts))
 
 
+# Argument parsing:
 def parse_args(args):
     p = argparse.ArgumentParser(
         description=DESCRIPTION,
         formatter_class=argparse.RawTextHelpFormatter)
 
-    group = p.add_mutually_exclusive_group(required=True)
+    maingroup = p.add_argument_group(title='Command execution')
 
-    group.add_argument('--unit-test',
-                       dest='mainfunc',
-                       action='store_const',
-                       const=run_unit_tests_with_coverage,
-                       help='Run internal unit tests with coverage reporting.')
+    maingroup.add_argument('COMMANDS',
+                           nargs='*',
+                           help="Commands and arguments to run. Separate commands with `--'.")
 
-    group.add_argument('--unit-test-without-coverage',
-                       dest='mainfunc',
-                       action='store_const',
-                       const=run_unit_tests_without_coverage,
-                       help='Run internal unit tests without coverage analysis.')
+    testgroup = p.add_argument_group(title='Unit testing')
+
+    testgroup.add_argument('--unit-test',
+                           action='store_const',
+                           const=run_unit_tests_with_coverage,
+                           help='Run internal unit tests with coverage reporting.')
+
+    testgroup.add_argument('--unit-test-without-coverage',
+                           action='store_const',
+                           const=run_unit_tests_without_coverage,
+                           help='Run internal unit tests without coverage analysis.')
 
     if len(args) == 0:
         args = ['--help']
 
-    return p.parse_args(args)
+    opts = p.parse_args(args)
+    opts.mainfunc = None
+
+    for optname in ['--unit-test', '--unit-test-without-coverage', 'COMMANDS']:
+        dest = optname.lstrip('-').replace('-', '_')
+        optval = getattr(opts, dest)
+        if optval:
+            if optname == 'COMMANDS':
+                optval = run_iomux
+            if opts.mainfunc is None:
+                optval.optionname = optname
+                opts.mainfunc = optval
+            else:
+                p.error('%r and %r are mutually exclusive.' % (opts.mainfunc.optionname, optname))
+
+    cmds = []
+    cmd = []
+    for cmdarg in opts.COMMANDS:
+        if cmdarg == '--':
+            cmds.append(cmd)
+            cmd = []
+        else:
+            cmd.append(cmdarg)
+    cmds.append(cmd)
+
+    opts.COMMANDS = cmds
+
+    return opts
+
+
+
+# Main application:
+def run_iomux(opts):
+    raise NotImplementedError(`run_iomux`)
+
 
 
 # Unit tests:
