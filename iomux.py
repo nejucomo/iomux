@@ -149,6 +149,19 @@ class CommandlineArgumentTests (unittest.TestCase):
         self.assertIs(run_iomux, opts.mainfunc)
         self.assertEqual([['echo']], opts.COMMANDS)
 
+    def test_multiple_commands(self):
+        opts = parse_args(['echo', '-n', 'foo', '--', 'cat', 'bar'])
+        self.assertIs(run_iomux, opts.mainfunc)
+        self.assertEqual([['echo', '-n', 'foo'], ['cat', 'bar']], opts.COMMANDS)
+
+    def test_empty_command_trailing_dashdash(self):
+        with StdoutCapture():
+            self.assertRaises(SystemExit, parse_args, ['echo', '-n', 'foo', '--'])
+
+    def test_empty_command_double_dashdash(self):
+        with StdoutCapture():
+            self.assertRaises(SystemExit, parse_args, ['cat', '--', '--', 'echo'])
+
 
 class StdoutCapture (object):
     def __enter__(self):
