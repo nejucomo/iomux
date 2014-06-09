@@ -32,7 +32,7 @@ def parse_args(args):
     maingroup = p.add_argument_group(title='Command execution')
 
     maingroup.add_argument('COMMANDS',
-                           nargs='*',
+                           nargs=argparse.REMAINDER,
                            help="Commands and arguments to run. Separate commands with `--'.")
 
     testgroup = p.add_argument_group(title='Unit testing')
