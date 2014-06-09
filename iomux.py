@@ -65,17 +65,30 @@ def parse_args(args):
             else:
                 p.error('%r and %r are mutually exclusive.' % (opts.mainfunc.optionname, optname))
 
-    cmds = []
-    cmd = []
-    for cmdarg in opts.COMMANDS:
-        if cmdarg == '--':
-            cmds.append(cmd)
-            cmd = []
-        else:
-            cmd.append(cmdarg)
-    cmds.append(cmd)
+    if opts.mainfunc is run_iomux:
+        # Split subcommands into separate arguments lists, and check
+        # for empty commands (which are a usage error).
+        cmds = []
+        cmd = []
 
-    opts.COMMANDS = cmds
+        def push_command():
+            if cmd:
+                cmds.append(list(cmd))
+                cmd[:] = []
+            else:
+                p.error('Empty COMMANDS are invalid')
+
+        if opts.COMMANDS[:1] == ['--']:
+            opts.COMMANDS = opts.COMMANDS[1:]
+
+        for cmdarg in opts.COMMANDS:
+            if cmdarg == '--':
+                push_command()
+            else:
+                cmd.append(cmdarg)
+        push_command()
+
+        opts.COMMANDS = cmds
 
     return opts
 
