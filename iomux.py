@@ -1,10 +1,10 @@
 #! /usr/bin/env python
 
 import os
+import errno
 import sys
 import argparse
 import unittest
-import tempfile
 import subprocess
 from cStringIO import StringIO
 
@@ -49,7 +49,13 @@ def run_unit_tests_with_coverage(opts):
     prog = os.path.abspath(sys.argv[0])
     covargs = ['coverage', 'run', '--branch', prog, '--unit-test-without-coverage']
 
-    covdir = tempfile.mkdtemp(prefix='coverage.', suffix='.iomux')
+    covdir = os.path.join(os.environ.get('TMPDIR', '/tmp'), 'iomux.coverage')
+    try:
+        os.mkdir(covdir)
+    except os.error, e:
+        if e.errno != errno.EEXIST:
+            raise
+
     os.chdir(covdir)
     print 'Generating coverage data and report in: %r' % (covdir,)
 
