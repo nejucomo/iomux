@@ -128,8 +128,21 @@ class Timestamper (object):
 
 
 class LineBuffer (object):
-    pass
+    def __init__(self, outstream):
+        self._f = outstream
+        self._buf = ''
 
+    def write(self, data):
+        lines = (self._buf + data).split('\n')
+        self._buf = lines.pop()
+
+        for line in lines:
+            self._f.write(line + '\n')
+
+    def flush(self):
+        if self._buf:
+            self._f.write(self._buf)
+            self._buf = ''
 
 
 # Unit tests:
@@ -252,7 +265,7 @@ class LineBufferTests (unittest.TestCase):
         self.assertEqual('foobar\n', sio.getvalue())
 
         lb.flush()
-        self.assertEqual('quz', sio.getvalue())
+        self.assertEqual('foobar\nquz', sio.getvalue())
 
 
 class StdoutCapture (object):
