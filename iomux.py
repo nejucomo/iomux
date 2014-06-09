@@ -1,8 +1,11 @@
 #! /usr/bin/env python
 
+import os
 import sys
 import argparse
 import unittest
+import tempfile
+from coverage import coverage
 
 
 DESCRIPTION = """
@@ -17,7 +20,7 @@ with 0, otherwise it is the first non-zero child's status.
 def main(args = sys.argv[1:]):
     opts = parse_args(args)
     if opts.unit_test:
-        unittest.main()
+        unittest_main()
 
 
 def parse_args(args):
@@ -30,6 +33,21 @@ def parse_args(args):
                    help='Run internal unit tests, then exit.')
 
     return p.parse_args(args)
+
+
+def unittest_main():
+    covdir = tempfile.mkdtemp(prefix='coverage.', suffix='.iomux')
+    covdata = os.path.join(covdir, 'coverage.data')
+    print 'Saving unittest coverage data in: %r' % (covdata,)
+    c = coverage(branch=True, data_file=covdata)
+    c.start()
+    try:
+        unittest.main(argv=sys.argv[:1], verbosity=2)
+    except SystemExit, e:
+        c.stop()
+        print 'Generating html coverage report in: %r' % (covdir,)
+        c.html_report(directory=covdir)
+        raise e
 
 
 
