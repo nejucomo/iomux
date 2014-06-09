@@ -127,6 +127,10 @@ class Timestamper (object):
         return time.strftime(self.format, time.gmtime(self.time()))
 
 
+class LineBuffer (object):
+    pass
+
+
 
 # Unit tests:
 def run_unit_tests_with_coverage(opts):
@@ -234,6 +238,21 @@ class TimestamperTests (unittest.TestCase):
         ts = Timestamper(ISO8601, _time=lambda : 0)
         for _ in range(2):
             self.assertEqual('1970-01-01 00:00:00+0000', ts())
+
+
+class LineBufferTests (unittest.TestCase):
+    def test_linebuffer(self):
+        sio = StringIO()
+        lb = LineBuffer(sio)
+
+        lb.write('foo')
+        self.assertEqual('', sio.getvalue())
+
+        lb.write('bar\nquz')
+        self.assertEqual('foobar\n', sio.getvalue())
+
+        lb.flush()
+        self.assertEqual('quz', sio.getvalue())
 
 
 class StdoutCapture (object):
