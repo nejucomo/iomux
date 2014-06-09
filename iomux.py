@@ -85,6 +85,16 @@ class CommandlineArgumentTests (unittest.TestCase):
         with StdoutCapture():
             self.assertRaises(SystemExit, parse_args, ['--unit-test', '--unit-test-without-coverage'])
 
+    def test_no_args(self):
+        with StdoutCapture() as helpcap:
+            self.assertRaises(SystemExit, parse_args, ['--help'])
+
+        with StdoutCapture() as noargscap:
+            self.assertRaises(SystemExit, parse_args, [])
+
+        self.assertEqual(helpcap.get_outputs(), noargscap.get_outputs())
+
+
 
 class StdoutCapture (object):
     def __enter__(self):
@@ -97,6 +107,9 @@ class StdoutCapture (object):
     def __exit__(self, *args):
         sys.stdout = self.realout
         sys.stderr = self.realerr
+
+    def get_outputs(self):
+        return (self.capout.getvalue(), self.caperr.getvalue())
 
 
 
