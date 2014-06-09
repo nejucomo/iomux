@@ -74,6 +74,9 @@ class CommandlineArgumentTests (unittest.TestCase):
         opts = parse_args(['--unit-test-without-coverage'])
         self.assertIs(run_unit_tests_without_coverage, opts.mainfunc)
 
+    def test_exclusive_options(self):
+        self.assertRaises(SystemExit, parse_args, ['--unit-test', '--unit-test-without-coverage'])
+
 
 
 if __name__ == '__main__':
