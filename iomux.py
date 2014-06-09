@@ -1,8 +1,9 @@
 #! /usr/bin/env python
 
 import os
-import errno
 import sys
+import time
+import errno
 import argparse
 import unittest
 import subprocess
@@ -16,6 +17,8 @@ process is sent to the first command.  The iomux parent process waits
 for all children to exit.  The exit value is 0 if all children exited
 with 0, otherwise it is the first non-zero child's status.
 """
+
+ISO8601 = '%Y-%m-%d %H:%M:%S%z'
 
 
 def main(args = sys.argv[1:]):
@@ -113,6 +116,15 @@ class FormatWriter (object):
 
     def close(self):
         self._f.close()
+
+
+class Timestamper (object):
+    def __init__(self, format, _time=time.time):
+        self.format = format
+        self.time = _time
+
+    def __call__(self):
+        return time.strftime(self.format, time.gmtime(self.time()))
 
 
 
@@ -215,6 +227,13 @@ class FormatWriterTests (unittest.TestCase):
         fw.close()
 
         self.assertRaises(ValueError, f.getvalue) # operation on closed file.
+
+
+class TimestamperTests (unittest.TestCase):
+    def test_timestamper(self):
+        ts = Timestamper(ISO8601, _time=lambda : 0)
+        for _ in range(2):
+            self.assertEqual('1970-01-01 00:00:00+0000', ts())
 
 
 class StdoutCapture (object):
