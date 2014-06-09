@@ -45,6 +45,7 @@ def parse_args(args):
     return p.parse_args(args)
 
 
+# Unit tests:
 def run_unit_tests_with_coverage(opts):
     prog = os.path.abspath(sys.argv[0])
     covargs = ['coverage', 'run', '--branch', prog, '--unit-test-without-coverage']
@@ -71,7 +72,6 @@ def run_unit_tests_without_coverage(opts):
 
 
 
-# Unit tests:
 class CommandlineArgumentTests (unittest.TestCase):
     def test_parse_unit_test(self):
         opts = parse_args(['--unit-test'])
@@ -82,12 +82,21 @@ class CommandlineArgumentTests (unittest.TestCase):
         self.assertIs(run_unit_tests_without_coverage, opts.mainfunc)
 
     def test_exclusive_options(self):
-        realerr = sys.stderr
-        sys.stderr = StringIO()
-        try:
+        with StdoutCapture():
             self.assertRaises(SystemExit, parse_args, ['--unit-test', '--unit-test-without-coverage'])
-        finally:
-            sys.stderr = realerr
+
+
+class StdoutCapture (object):
+    def __enter__(self):
+        self.realout = sys.stdout
+        self.realerr = sys.stderr
+        sys.stdout = self.capout = StringIO()
+        sys.stderr = self.caperr = StringIO()
+        return self
+
+    def __exit__(self, *args):
+        sys.stdout = self.realout
+        sys.stderr = self.realerr
 
 
 
