@@ -310,7 +310,7 @@ class TimestamperTests (unittest.TestCase):
 
 
 class LineBufferTests (MockingTestCase):
-    def test_linebuffer(self):
+    def test_flush_buffer(self):
         f = MagicMock()
 
         lb = LineBuffer(f)
@@ -322,6 +322,20 @@ class LineBufferTests (MockingTestCase):
             f,
             [call.write('foobar\n'),
              call.write('quz'),
+             call.flush()])
+
+    def test_flush_empty_buffer(self):
+        f = MagicMock()
+
+        lb = LineBuffer(f)
+        lb.write('foo')
+        lb.write('bar\nquz\n')
+        lb.flush()
+
+        self._assertCallsEqual(
+            f,
+            [call.write('foobar\n'),
+             call.write('quz\n'),
              call.flush()])
 
 
