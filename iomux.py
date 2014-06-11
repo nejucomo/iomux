@@ -272,22 +272,25 @@ class WriteFileFilterTests (unittest.TestCase):
 
 class FormatWriterTests (unittest.TestCase):
     def test_format_writer(self):
-        f = StringIO()
-
         def counter():
             counter.c += 1
             return counter.c
         counter.c = 0
 
+        f = MagicMock()
+
         fw = FormatWriter(f, '{const} {counter} {message}', const=lambda : '<A constant>', counter=counter)
         fw.write('foo')
         fw.write('bar')
 
-        self.assertEqual('<A constant> 1 foo\n<A constant> 2 bar\n', f.getvalue())
+        self.assertEqual(
+            f.write.call_args_list,
+            [call('<A constant> 1 foo\n'),
+             call('<A constant> 2 bar\n')])
 
         fw.close()
 
-        self.assertRaises(ValueError, f.getvalue) # operation on closed file.
+        self.assertEqual(f.close.call_args_list, [call()])
 
 
 class TimestamperTests (unittest.TestCase):
@@ -299,17 +302,16 @@ class TimestamperTests (unittest.TestCase):
 
 class LineBufferTests (unittest.TestCase):
     def test_linebuffer(self):
-        sio = StringIO()
-        lb = LineBuffer(sio)
+        f = MagicMock()
+        lb = LineBuffer(f)
 
         lb.write('foo')
-        self.assertEqual('', sio.getvalue())
-
         lb.write('bar\nquz')
-        self.assertEqual('foobar\n', sio.getvalue())
+        self.assertEqual(f.write.call_args_list, [call('foobar\n')])
 
         lb.flush()
-        self.assertEqual('foobar\nquz', sio.getvalue())
+        self.assertEqual(f.write.call_args_list, [call('foobar\n'), call('quz')])
+        self.assertEqual(f.flush.call_args_list, [call()])
 
 
 class StdoutCapture (object):
