@@ -7,8 +7,7 @@ import errno
 import argparse
 import unittest
 import subprocess
-from cStringIO import StringIO
-from mock import MagicMock, call
+from mock import MagicMock, call, patch
 
 
 DESCRIPTION = """
@@ -200,25 +199,21 @@ class CommandlineArgumentTests (unittest.TestCase):
         self.assertIs(run_unit_tests_without_coverage, opts.mainfunc)
 
     def test_exclusive_unittest_options(self):
-        with StdoutCapture():
-            self.assertRaises(SystemExit, parse_args, ['--unit-test', '--unit-test-without-coverage'])
+        self._assertUsageError('--unit-test', '--unit-test-without-coverage')
 
     def test_exclusive_test_option_and_command(self):
-        with StdoutCapture():
-            self.assertRaises(SystemExit, parse_args, ['--unit-test', 'echo'])
+        self._assertUsageError('--unit-test', 'echo')
 
     def test_colliding_arguments_in_subcommands(self):
         opts = parse_args(['echo', '--unit-test'])
         self.assertEqual([['echo', '--unit-test']], opts.COMMANDS)
 
     def test_no_args(self):
-        with StdoutCapture() as helpcap:
-            self.assertRaises(SystemExit, parse_args, ['--help'])
+        (helpout, helperr) = self._captureStdout('--help')
+        (noargsout, noargserr) = self._captureStdout()
 
-        with StdoutCapture() as noargscap:
-            self.assertRaises(SystemExit, parse_args, [])
-
-        self.assertEqual(helpcap.get_outputs(), noargscap.get_outputs())
+        self.assertEqual(helpout.method_calls, noargsout.method_calls)
+        self.assertEqual(helperr.method_calls, noargserr.method_calls)
 
     def test_no_dash_dash_echo(self):
         opts = parse_args(['echo'])
@@ -236,12 +231,21 @@ class CommandlineArgumentTests (unittest.TestCase):
         self.assertEqual([['echo', '-n', 'foo'], ['cat', 'bar']], opts.COMMANDS)
 
     def test_empty_command_trailing_dashdash(self):
-        with StdoutCapture():
-            self.assertRaises(SystemExit, parse_args, ['echo', '-n', 'foo', '--'])
+        self._assertUsageError('echo', '-n', 'foo', '--')
 
     def test_empty_command_double_dashdash(self):
-        with StdoutCapture():
-            self.assertRaises(SystemExit, parse_args, ['cat', '--', '--', 'echo'])
+        self._assertUsageError('cat', '--', '--', 'echo')
+
+    def _captureStdout(self, *args):
+        with patch('sys.stdout') as out, patch('sys.stderr') as err:
+            self.assertRaises(SystemExit, parse_args, args)
+            return (out, err)
+
+    def _assertUsageError(self, *args):
+        (out, err) = self._captureStdout(*args)
+        self.assertEqual(out.write.call_args_list, [])
+        self.failUnless(err.write.called)
+        return (out, err)
 
 
 class IOManagerTests (unittest.TestCase):
@@ -313,22 +317,6 @@ class LineBufferTests (unittest.TestCase):
         lb.flush()
         self.assertEqual(f.write.call_args_list, [call('foobar\n'), call('quz')])
         self.assertEqual(f.flush.call_args_list, [call()])
-
-
-class StdoutCapture (object):
-    def __enter__(self):
-        self.realout = sys.stdout
-        self.realerr = sys.stderr
-        sys.stdout = self.capout = StringIO()
-        sys.stderr = self.caperr = StringIO()
-        return self
-
-    def __exit__(self, *args):
-        sys.stdout = self.realout
-        sys.stderr = self.realerr
-
-    def get_outputs(self):
-        return (self.capout.getvalue(), self.caperr.getvalue())
 
 
 
