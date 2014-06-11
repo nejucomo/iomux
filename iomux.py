@@ -102,6 +102,11 @@ def run_iomux(opts):
     raise NotImplementedError(`run_iomux`)
 
 
+class IOManager (object):
+    def mainloop(self):
+        raise NotImplemented(`IOManager.mainloop`)
+
+
 class WriteFileFilter (object):
     def __init__(self, outstream):
         self._f = outstream
@@ -235,6 +240,12 @@ class CommandlineArgumentTests (unittest.TestCase):
     def test_empty_command_double_dashdash(self):
         with StdoutCapture():
             self.assertRaises(SystemExit, parse_args, ['cat', '--', '--', 'echo'])
+
+
+class IOManagerTests (unittest.TestCase):
+    def test_empty_loop(self):
+        iom = IOManager()
+        self.assertEqual(0, iom.mainloop())
 
 
 class WriteFileFilterTests (unittest.TestCase):
