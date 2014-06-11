@@ -135,12 +135,11 @@ class FormatWriter (WriteFileFilter):
 
 
 class Timestamper (object):
-    def __init__(self, format, _time=time.time):
+    def __init__(self, format):
         self.format = format
-        self.time = _time
 
     def __call__(self):
-        return time.strftime(self.format, time.gmtime(self.time()))
+        return time.strftime(self.format, time.gmtime(time.time()))
 
 
 class LineBuffer (WriteFileFilter):
@@ -302,9 +301,12 @@ class FormatWriterTests (MockingTestCase):
 
 class TimestamperTests (unittest.TestCase):
     def test_timestamper(self):
-        ts = Timestamper(ISO8601, _time=lambda : 0)
-        for _ in range(2):
-            self.assertEqual('1970-01-01 00:00:00+0000', ts())
+        with patch('time.time') as mocktime:
+            mocktime.return_value = 0
+
+            ts = Timestamper(ISO8601)
+            for _ in range(2):
+                self.assertEqual('1970-01-01 00:00:00+0000', ts())
 
 
 class LineBufferTests (MockingTestCase):
