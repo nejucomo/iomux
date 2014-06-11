@@ -4,6 +4,7 @@ import os
 import sys
 import time
 import errno
+import select
 import argparse
 import unittest
 import subprocess
@@ -105,8 +106,44 @@ def run_iomux(opts):
 
 
 class IOManager (object):
-    def mainloop(self):
-        raise NotImplementedError(`IOManager.mainloop`)
+    def __init__(self):
+        self._sources = {} # { readadblefd -> writablefile }
+        self._sinks = {} # { writablefd -> SinkBuffer }
+
+    def add_source(self, rfd, outfile):
+        self._sources[rfd] = outfile
+
+    def add_sink(self, wfd, sinkbuffer):
+        self._sinks[wfd] = sinkbuffer
+
+    def run_once(self):
+        (rfds, wfds, efds) = select.select(
+            self._sources.keys(),
+            [ wfd for (wfd, sbuf) in self._sinks.iteritems() if sbuf.pending() ],
+            [],
+            SELECT_INTERVAL)
+        assert efds == [], 'select() postcondition violation: efds == %r' % (efds,)
+
+        for rfd in rfds:
+            wfile = self._sources[rfd]
+            buf = os.read(rfd, BUFSIZE)
+            if buf:
+                wfile.write(buf)
+            else:
+                wfile.close()
+                #del self._sources[rfd]
+
+        for wfd in wfds:
+            sinkbuf = self._sinks[wfd]
+            data = sinkbuf.take()
+            if data is None:
+                os.close(wfd)
+                #del self._sinks[wfd]
+            else:
+                written = os.write(wfd, data)
+                if written < len(data):
+                    sinkbuf.put_back(data[written:])
+
 
 
 class WriteFileFilter (object):
@@ -192,7 +229,7 @@ def run_unit_tests_without_coverage(opts):
 
 class MockingTestCase (unittest.TestCase):
     def _assertCallsEqual(self, mock, calls):
-        self.assertEqual(mock.method_calls, calls)
+        self.assertEqual(mock._mock_mock_calls, calls)
 
 
 class CommandlineArgumentTests (MockingTestCase):
@@ -258,9 +295,6 @@ class IOManagerTests (MockingTestCase):
     def setUp(self):
         self.m = IOManager()
 
-    def test_empty_loop(self):
-        self.assertEqual(0, self.m.mainloop())
-
     def test_run_once_timeout(self):
         with patch('select.select') as mockselect:
             rfd = 42
@@ -292,7 +326,7 @@ class IOManagerTests (MockingTestCase):
             rfd = 42
             mockout = MagicMock()
             mockselect.return_value = ([rfd], [], [])
-            mockread.return_value = 'banana'
+            mockread.return_value = ''
 
             self.m.add_source(rfd, mockout)
             self.m.run_once()
