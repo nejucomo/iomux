@@ -301,6 +301,44 @@ class IOManagerTests (MockingTestCase):
             self._assertCallsEqual(mockread, [call.read(rfd, BUFSIZE)])
             self._assertCallsEqual(mockout, [call.close()])
 
+    def test_write(self):
+        with patch('select.select') as mockselect, patch('os.write') as mockwrite:
+            wfd = 42
+            mocksinkbuffer = MagicMock()
+            mocksinkbuffer.pending.return_value = True
+            mocksinkbuffer.take.return_value = 'foobar'
+            mockwrite.return_value = 3
+            mockselect.return_value = ([], [wfd], [])
+
+            self.m.add_sink(wfd, mocksinkbuffer)
+            self.m.run_once()
+
+            self._assertCallsEqual(mockselect, [call([], [wfd], [], SELECT_INTERVAL)])
+            self._assertCallsEqual(
+                mocksinkbuffer,
+                [call.pending(),
+                 call.take(),
+                 call.put_back('bar')])
+            self._assertCallsEqual(mockwrite, [call(wfd, 'foobar')])
+
+    def test_write_close(self):
+        with patch('select.select') as mockselect, patch('os.close') as mockclose:
+            wfd = 42
+            mocksinkbuffer = MagicMock()
+            mocksinkbuffer.pending.return_value = True
+            mocksinkbuffer.take.return_value = None
+            mockselect.return_value = ([], [wfd], [])
+
+            self.m.add_sink(wfd, mocksinkbuffer)
+            self.m.run_once()
+
+            self._assertCallsEqual(mockselect, [call([], [wfd], [], SELECT_INTERVAL)])
+            self._assertCallsEqual(
+                mocksinkbuffer,
+                [call.pending(),
+                 call.take()])
+            self._assertCallsEqual(mockclose, [call(wfd)])
+
 
 class WriteFileFilterTests (MockingTestCase):
     def test_writefilefilter(self):
