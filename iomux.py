@@ -277,7 +277,6 @@ class IOManagerTests (MockingTestCase):
         with patch('select.select') as mockselect, patch('os.read') as mockread:
             rfd = 42
             mockout = MagicMock()
-            mockselect.return_value = ([], [], [])
             mockselect.return_value = ([rfd], [], [])
             mockread.return_value = 'banana'
 
@@ -292,7 +291,6 @@ class IOManagerTests (MockingTestCase):
         with patch('select.select') as mockselect, patch('os.read') as mockread:
             rfd = 42
             mockout = MagicMock()
-            mockselect.return_value = ([], [], [])
             mockselect.return_value = ([rfd], [], [])
             mockread.return_value = 'banana'
 
