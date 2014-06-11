@@ -19,6 +19,8 @@ with 0, otherwise it is the first non-zero child's status.
 """
 
 ISO8601 = '%Y-%m-%d %H:%M:%S%z'
+SELECT_INTERVAL = 1.3
+BUFSIZE = 2**14
 
 
 def main(args = sys.argv[1:]):
@@ -252,10 +254,54 @@ class CommandlineArgumentTests (MockingTestCase):
         return (out, err)
 
 
-class IOManagerTests (unittest.TestCase):
+class IOManagerTests (MockingTestCase):
+    def setUp(self):
+        self.m = IOManager()
+
     def test_empty_loop(self):
-        iom = IOManager()
-        self.assertEqual(0, iom.mainloop())
+        self.assertEqual(0, self.m.mainloop())
+
+    def test_run_once_timeout(self):
+        with patch('select.select') as mockselect:
+            rfd = 42
+            mockout = MagicMock()
+            mockselect.return_value = ([], [], [])
+
+            self.m.add_source(rfd, mockout)
+            self.m.run_once()
+
+            self._assertCallsEqual(mockselect, [call([rfd], [], [], SELECT_INTERVAL)])
+            self._assertCallsEqual(mockout, [])
+
+    def test_read(self):
+        with patch('select.select') as mockselect, patch('os.read') as mockread:
+            rfd = 42
+            mockout = MagicMock()
+            mockselect.return_value = ([], [], [])
+            mockselect.return_value = ([rfd], [], [])
+            mockread.return_value = 'banana'
+
+            self.m.add_source(rfd, mockout)
+            self.m.run_once()
+
+            self._assertCallsEqual(mockselect, [call([rfd], [], [], SELECT_INTERVAL)])
+            self._assertCallsEqual(mockread, [call.read(rfd, BUFSIZE)])
+            self._assertCallsEqual(mockout, [call.write('banana')])
+
+    def test_read_close(self):
+        with patch('select.select') as mockselect, patch('os.read') as mockread:
+            rfd = 42
+            mockout = MagicMock()
+            mockselect.return_value = ([], [], [])
+            mockselect.return_value = ([rfd], [], [])
+            mockread.return_value = 'banana'
+
+            self.m.add_source(rfd, mockout)
+            self.m.run_once()
+
+            self._assertCallsEqual(mockselect, [call([rfd], [], [], SELECT_INTERVAL)])
+            self._assertCallsEqual(mockread, [call.read(rfd, BUFSIZE)])
+            self._assertCallsEqual(mockout, [call.close()])
 
 
 class WriteFileFilterTests (MockingTestCase):
