@@ -8,6 +8,7 @@ import argparse
 import unittest
 import subprocess
 from cStringIO import StringIO
+from mock import MagicMock, call
 
 
 DESCRIPTION = """
@@ -250,38 +251,23 @@ class IOManagerTests (unittest.TestCase):
 
 class WriteFileFilterTests (unittest.TestCase):
     def test_writefilefilter(self):
-        class MockFile (object):
-            def __init__(self):
-                self._ops = []
-            def write(self, data):
-                self._ops.append(('write', data))
-            def flush(self):
-                self._ops.append(('flush', ))
-            def close(self):
-                self._ops.append(('close', ))
-
-        mockfile = MockFile()
+        mockfile = MagicMock()
         wff = WriteFileFilter(mockfile)
-        self.assertEqual([], mockfile._ops)
 
         wff.write('foo')
-        self.assertEqual([('write', 'foo')], mockfile._ops)
+        self.assertEqual(mockfile.write.call_args_list, [call('foo')])
 
         wff.write('bar')
-        self.assertEqual([('write', 'foo'), ('write', 'bar')], mockfile._ops)
+        self.assertEqual(mockfile.write.call_args_list, [call('foo'), call('bar')])
 
         wff.flush()
-        self.assertEqual([('write', 'foo'), ('write', 'bar'), ('flush',)], mockfile._ops)
+        self.assertEqual(mockfile.flush.call_args_list, [call()])
 
         wff.write('quz')
-        self.assertEqual(
-            [('write', 'foo'), ('write', 'bar'), ('flush',), ('write', 'quz')],
-            mockfile._ops)
+        self.assertEqual(mockfile.write.call_args_list, [call('foo'), call('bar'), call('quz')])
 
         wff.close()
-        self.assertEqual(
-            [('write', 'foo'), ('write', 'bar'), ('flush',), ('write', 'quz'), ('close',)],
-            mockfile._ops)
+        self.assertEqual(mockfile.close.call_args_list, [call()])
 
 
 class FormatWriterTests (unittest.TestCase):
