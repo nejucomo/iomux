@@ -189,7 +189,12 @@ def run_unit_tests_without_coverage(opts):
 
 
 
-class CommandlineArgumentTests (unittest.TestCase):
+class MockingTestCase (unittest.TestCase):
+    def _assertCallsEqual(self, mock, calls):
+        self.assertEqual(mock.method_calls, calls)
+
+
+class CommandlineArgumentTests (MockingTestCase):
     def test_parse_unit_test(self):
         opts = parse_args(['--unit-test'])
         self.assertIs(run_unit_tests_with_coverage, opts.mainfunc)
@@ -243,7 +248,7 @@ class CommandlineArgumentTests (unittest.TestCase):
 
     def _assertUsageError(self, *args):
         (out, err) = self._captureStdout(*args)
-        self.assertEqual(out.write.call_args_list, [])
+        self._assertCallsEqual(out.write, [])
         self.failUnless(err.write.called)
         return (out, err)
 
@@ -254,28 +259,27 @@ class IOManagerTests (unittest.TestCase):
         self.assertEqual(0, iom.mainloop())
 
 
-class WriteFileFilterTests (unittest.TestCase):
+class WriteFileFilterTests (MockingTestCase):
     def test_writefilefilter(self):
         mockfile = MagicMock()
+
         wff = WriteFileFilter(mockfile)
-
         wff.write('foo')
-        self.assertEqual(mockfile.write.call_args_list, [call('foo')])
-
         wff.write('bar')
-        self.assertEqual(mockfile.write.call_args_list, [call('foo'), call('bar')])
-
         wff.flush()
-        self.assertEqual(mockfile.flush.call_args_list, [call()])
-
         wff.write('quz')
-        self.assertEqual(mockfile.write.call_args_list, [call('foo'), call('bar'), call('quz')])
-
         wff.close()
-        self.assertEqual(mockfile.close.call_args_list, [call()])
+
+        self._assertCallsEqual(
+            mockfile,
+            [call.write('foo'),
+             call.write('bar'),
+             call.flush(),
+             call.write('quz'),
+             call.close()])
 
 
-class FormatWriterTests (unittest.TestCase):
+class FormatWriterTests (MockingTestCase):
     def test_format_writer(self):
         def counter():
             counter.c += 1
@@ -287,15 +291,13 @@ class FormatWriterTests (unittest.TestCase):
         fw = FormatWriter(f, '{const} {counter} {message}', const=lambda : '<A constant>', counter=counter)
         fw.write('foo')
         fw.write('bar')
-
-        self.assertEqual(
-            f.write.call_args_list,
-            [call('<A constant> 1 foo\n'),
-             call('<A constant> 2 bar\n')])
-
         fw.close()
 
-        self.assertEqual(f.close.call_args_list, [call()])
+        self._assertCallsEqual(
+            f,
+            [call.write('<A constant> 1 foo\n'),
+             call.write('<A constant> 2 bar\n'),
+             call.close()])
 
 
 class TimestamperTests (unittest.TestCase):
@@ -305,18 +307,20 @@ class TimestamperTests (unittest.TestCase):
             self.assertEqual('1970-01-01 00:00:00+0000', ts())
 
 
-class LineBufferTests (unittest.TestCase):
+class LineBufferTests (MockingTestCase):
     def test_linebuffer(self):
         f = MagicMock()
-        lb = LineBuffer(f)
 
+        lb = LineBuffer(f)
         lb.write('foo')
         lb.write('bar\nquz')
-        self.assertEqual(f.write.call_args_list, [call('foobar\n')])
-
         lb.flush()
-        self.assertEqual(f.write.call_args_list, [call('foobar\n'), call('quz')])
-        self.assertEqual(f.flush.call_args_list, [call()])
+
+        self._assertCallsEqual(
+            f,
+            [call.write('foobar\n'),
+             call.write('quz'),
+             call.flush()])
 
 
 
