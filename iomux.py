@@ -160,6 +160,7 @@ class LineBuffer (WriteFileFilter):
         if self._buf:
             self._f.write(self._buf)
             self._buf = ''
+        self._f.flush()
 
 
 # Unit tests:
