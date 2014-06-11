@@ -104,7 +104,7 @@ def run_iomux(opts):
 
 class IOManager (object):
     def mainloop(self):
-        raise NotImplemented(`IOManager.mainloop`)
+        raise NotImplementedError(`IOManager.mainloop`)
 
 
 class WriteFileFilter (object):
