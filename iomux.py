@@ -302,10 +302,11 @@ class IOManagerTests (MockingTestCase):
             mockselect.return_value = ([], [], [])
 
             self.m.add_source(rfd, mockout)
-            self.m.run_once()
+            cont = self.m.run_once()
 
             self._assertCallsEqual(mockselect, [call([rfd], [], [], SELECT_INTERVAL)])
             self._assertCallsEqual(mockout, [])
+            self.assertEqual(True, cont)
 
     def test_read(self):
         with patch('select.select') as mockselect, patch('os.read') as mockread:
@@ -315,11 +316,12 @@ class IOManagerTests (MockingTestCase):
             mockread.return_value = 'banana'
 
             self.m.add_source(rfd, mockout)
-            self.m.run_once()
+            cont = self.m.run_once()
 
             self._assertCallsEqual(mockselect, [call([rfd], [], [], SELECT_INTERVAL)])
             self._assertCallsEqual(mockread, [call.read(rfd, BUFSIZE)])
             self._assertCallsEqual(mockout, [call.write('banana')])
+            self.assertEqual(True, cont)
 
     def test_read_close(self):
         with patch('select.select') as mockselect, patch('os.read') as mockread:
@@ -329,11 +331,12 @@ class IOManagerTests (MockingTestCase):
             mockread.return_value = ''
 
             self.m.add_source(rfd, mockout)
-            self.m.run_once()
+            cont = self.m.run_once()
 
             self._assertCallsEqual(mockselect, [call([rfd], [], [], SELECT_INTERVAL)])
             self._assertCallsEqual(mockread, [call.read(rfd, BUFSIZE)])
             self._assertCallsEqual(mockout, [call.close()])
+            self.assertEqual(False, cont)
 
     def test_write(self):
         with patch('select.select') as mockselect, patch('os.write') as mockwrite:
@@ -345,7 +348,7 @@ class IOManagerTests (MockingTestCase):
             mockselect.return_value = ([], [wfd], [])
 
             self.m.add_sink(wfd, mocksinkbuffer)
-            self.m.run_once()
+            cont = self.m.run_once()
 
             self._assertCallsEqual(mockselect, [call([], [wfd], [], SELECT_INTERVAL)])
             self._assertCallsEqual(
@@ -354,6 +357,7 @@ class IOManagerTests (MockingTestCase):
                  call.take(),
                  call.put_back('bar')])
             self._assertCallsEqual(mockwrite, [call(wfd, 'foobar')])
+            self.assertEqual(True, cont)
 
     def test_write_close(self):
         with patch('select.select') as mockselect, patch('os.close') as mockclose:
@@ -364,7 +368,7 @@ class IOManagerTests (MockingTestCase):
             mockselect.return_value = ([], [wfd], [])
 
             self.m.add_sink(wfd, mocksinkbuffer)
-            self.m.run_once()
+            cont = self.m.run_once()
 
             self._assertCallsEqual(mockselect, [call([], [wfd], [], SELECT_INTERVAL)])
             self._assertCallsEqual(
@@ -372,6 +376,7 @@ class IOManagerTests (MockingTestCase):
                 [call.pending(),
                  call.take()])
             self._assertCallsEqual(mockclose, [call(wfd)])
+            self.assertEqual(False, cont)
 
 
 class WriteFileFilterTests (MockingTestCase):
