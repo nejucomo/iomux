@@ -131,19 +131,20 @@ class IOManager (object):
                 wfile.write(buf)
             else:
                 wfile.close()
-                #del self._sources[rfd]
+                del self._sources[rfd]
 
         for wfd in wfds:
             sinkbuf = self._sinks[wfd]
             data = sinkbuf.take()
             if data is None:
                 os.close(wfd)
-                #del self._sinks[wfd]
+                del self._sinks[wfd]
             else:
                 written = os.write(wfd, data)
                 if written < len(data):
                     sinkbuf.put_back(data[written:])
 
+        return len(self._sources) + len(self._sinks) > 0
 
 
 class WriteFileFilter (object):
