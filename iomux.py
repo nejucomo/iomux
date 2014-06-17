@@ -116,7 +116,7 @@ class IOManager (object):
     def add_sink(self, wfd, sinkbuffer):
         self._sinks[wfd] = sinkbuffer
 
-    def run_once(self):
+    def process_events(self):
         (rfds, wfds, efds) = select.select(
             self._sources.keys(),
             [ wfd for (wfd, sbuf) in self._sinks.iteritems() if sbuf.pending() ],
@@ -296,14 +296,14 @@ class IOManagerTests (MockingTestCase):
     def setUp(self):
         self.m = IOManager()
 
-    def test_run_once_timeout(self):
+    def test_process_events_timeout(self):
         with patch('select.select') as mockselect:
             rfd = 42
             mockout = MagicMock()
             mockselect.return_value = ([], [], [])
 
             self.m.add_source(rfd, mockout)
-            cont = self.m.run_once()
+            cont = self.m.process_events()
 
             self._assertCallsEqual(mockselect, [call([rfd], [], [], SELECT_INTERVAL)])
             self._assertCallsEqual(mockout, [])
@@ -317,7 +317,7 @@ class IOManagerTests (MockingTestCase):
             mockread.return_value = 'banana'
 
             self.m.add_source(rfd, mockout)
-            cont = self.m.run_once()
+            cont = self.m.process_events()
 
             self._assertCallsEqual(mockselect, [call([rfd], [], [], SELECT_INTERVAL)])
             self._assertCallsEqual(mockread, [call.read(rfd, BUFSIZE)])
@@ -332,7 +332,7 @@ class IOManagerTests (MockingTestCase):
             mockread.return_value = ''
 
             self.m.add_source(rfd, mockout)
-            cont = self.m.run_once()
+            cont = self.m.process_events()
 
             self._assertCallsEqual(mockselect, [call([rfd], [], [], SELECT_INTERVAL)])
             self._assertCallsEqual(mockread, [call.read(rfd, BUFSIZE)])
@@ -349,7 +349,7 @@ class IOManagerTests (MockingTestCase):
             mockselect.return_value = ([], [wfd], [])
 
             self.m.add_sink(wfd, mocksinkbuffer)
-            cont = self.m.run_once()
+            cont = self.m.process_events()
 
             self._assertCallsEqual(mockselect, [call([], [wfd], [], SELECT_INTERVAL)])
             self._assertCallsEqual(
@@ -369,7 +369,7 @@ class IOManagerTests (MockingTestCase):
             mockselect.return_value = ([], [wfd], [])
 
             self.m.add_sink(wfd, mocksinkbuffer)
-            cont = self.m.run_once()
+            cont = self.m.process_events()
 
             self._assertCallsEqual(mockselect, [call([], [wfd], [], SELECT_INTERVAL)])
             self._assertCallsEqual(
@@ -389,7 +389,7 @@ class IOManagerTests (MockingTestCase):
             mockselect.return_value = ([], [wfd], [])
 
             self.m.add_sink(wfd, mocksinkbuffer)
-            cont = self.m.run_once()
+            cont = self.m.process_events()
 
             self._assertCallsEqual(mockselect, [call([], [wfd], [], SELECT_INTERVAL)])
             self._assertCallsEqual(
