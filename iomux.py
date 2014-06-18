@@ -111,9 +111,20 @@ def run_iomux(opts):
 class ProcessManager (object):
     def __init__(self, iomanager):
         self._iom = iomanager
+        self._procs = {} # { pid -> proc }
 
     def start_subprocess(self, args):
-        raise NotImplementedError(`ProcessManager.start_subprocess`)
+        p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        if self._procs:
+            os.close(p.stdin.fileno())
+        else:
+            self._iom.add_sink(p.stdin.fileno(), sentinel.UnimplementedSinkHandler)
+
+        self._iom.add_source(p.stdout.fileno(), sentinel.UnimplementedSourceHandler)
+        self._iom.add_source(p.stderr.fileno(), sentinel.UnimplementedSourceHandler)
+
+        self._procs[p.pid] = p
 
 
 class IOManager (object):
@@ -420,14 +431,16 @@ class ProcessManagerTests (MockingTestCase):
         argv1 = ['echo', 'hello', 'world']
         argv2 = ['date']
 
-        with patch('subprocess.Popen') as mockPopen, patch('os.fdclose') as mockFdClose:
+        with patch('subprocess.Popen') as mockPopen, patch('os.close') as mockClose:
 
             mockProc1 = MagicMock()
+            mockProc1.pid = 1001
             mockProc1.stdin.fileno.return_value = sentinel.proc1_stdin
             mockProc1.stdout.fileno.return_value = sentinel.proc1_stdout
             mockProc1.stderr.fileno.return_value = sentinel.proc1_stderr
 
             mockProc2 = MagicMock()
+            mockProc2.pid = 1002
             mockProc2.stdin.fileno.return_value = sentinel.proc2_stdin
             mockProc2.stdout.fileno.return_value = sentinel.proc2_stdout
             mockProc2.stderr.fileno.return_value = sentinel.proc2_stderr
@@ -455,7 +468,7 @@ class ProcessManagerTests (MockingTestCase):
                  call.stderr.fileno()])
 
             self._assertCallsEqual(
-                mockFdClose,
+                mockClose,
                 [call(sentinel.proc2_stdin)])
 
             self._assertCallsEqual(
