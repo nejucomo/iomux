@@ -8,7 +8,7 @@ import select
 import argparse
 import unittest
 import subprocess
-from mock import MagicMock, call, patch
+from mock import ANY, MagicMock, call, patch, sentinel
 
 
 DESCRIPTION = """
@@ -102,7 +102,18 @@ def parse_args(args):
 
 # Main application:
 def run_iomux(opts):
-    raise NotImplementedError(`run_iomux`)
+    iom = IOManager()
+    pm = ProcessManager(iom)
+
+    raise NotImplementedError(`run_iomux, pm`)
+
+
+class ProcessManager (object):
+    def __init__(self, iomanager):
+        self._iom = iomanager
+
+    def start_subprocess(self, args):
+        raise NotImplementedError(`ProcessManager.start_subprocess`)
 
 
 class IOManager (object):
@@ -398,6 +409,40 @@ class IOManagerTests (MockingTestCase):
                  call.take()])
             self._assertCallsEqual(mockclose, [call(wfd)])
             self.assertEqual(False, cont)
+
+
+class ProcessManagerTests (MockingTestCase):
+    def setUp(self):
+        self.iomock = MagicMock()
+        self.pm = ProcessManager(self.iomock)
+
+    def test_start_subprocess(self):
+        argv = ['echo', 'hello', 'world']
+
+        with patch('subprocess.Popen') as mockPopen:
+            mockProc = MagicMock()
+            mockPopen.return_value = mockProc
+            mockProc.stdin.fileno.return_value = sentinel.proc1_stdin
+            mockProc.stdout.fileno.return_value = sentinel.proc1_stdout
+            mockProc.stderr.fileno.return_value = sentinel.proc1_stderr
+
+            self.pm.start_subprocess(argv)
+
+            self._assertCallsEqual(
+                mockPopen,
+                [call(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)])
+
+            self._assertCallsEqual(
+                mockProc,
+                [call.stdin.fileno(),
+                 call.stdout.fileno(),
+                 call.stderr.fileno()])
+
+            self._assertCallsEqual(
+                self.iomock,
+                [call.add_sink(sentinel.proc1_stdin, ANY),
+                 call.add_source(sentinel.proc1_stdout, ANY),
+                 call.add_source(sentinel.proc1_stderr, ANY)])
 
 
 class WriteFileFilterTests (MockingTestCase):
