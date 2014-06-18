@@ -417,32 +417,54 @@ class ProcessManagerTests (MockingTestCase):
         self.pm = ProcessManager(self.iomock)
 
     def test_start_subprocess(self):
-        argv = ['echo', 'hello', 'world']
+        argv1 = ['echo', 'hello', 'world']
+        argv2 = ['date']
 
-        with patch('subprocess.Popen') as mockPopen:
-            mockProc = MagicMock()
-            mockPopen.return_value = mockProc
-            mockProc.stdin.fileno.return_value = sentinel.proc1_stdin
-            mockProc.stdout.fileno.return_value = sentinel.proc1_stdout
-            mockProc.stderr.fileno.return_value = sentinel.proc1_stderr
+        with patch('subprocess.Popen') as mockPopen, patch('os.fdclose') as mockFdClose:
 
-            self.pm.start_subprocess(argv)
+            mockProc1 = MagicMock()
+            mockProc1.stdin.fileno.return_value = sentinel.proc1_stdin
+            mockProc1.stdout.fileno.return_value = sentinel.proc1_stdout
+            mockProc1.stderr.fileno.return_value = sentinel.proc1_stderr
+
+            mockProc2 = MagicMock()
+            mockProc2.stdin.fileno.return_value = sentinel.proc2_stdin
+            mockProc2.stdout.fileno.return_value = sentinel.proc2_stdout
+            mockProc2.stderr.fileno.return_value = sentinel.proc2_stderr
+
+            mockPopen.side_effect = [mockProc1, mockProc2]
+
+            self.pm.start_subprocess(argv1)
+            self.pm.start_subprocess(argv2)
 
             self._assertCallsEqual(
                 mockPopen,
-                [call(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)])
+                [call(argv1, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE),
+                 call(argv2, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)])
 
             self._assertCallsEqual(
-                mockProc,
+                mockProc1,
                 [call.stdin.fileno(),
                  call.stdout.fileno(),
                  call.stderr.fileno()])
 
             self._assertCallsEqual(
+                mockProc2,
+                [call.stdin.fileno(),
+                 call.stdout.fileno(),
+                 call.stderr.fileno()])
+
+            self._assertCallsEqual(
+                mockFdClose,
+                [call(sentinel.proc2_stdin)])
+
+            self._assertCallsEqual(
                 self.iomock,
                 [call.add_sink(sentinel.proc1_stdin, ANY),
                  call.add_source(sentinel.proc1_stdout, ANY),
-                 call.add_source(sentinel.proc1_stderr, ANY)])
+                 call.add_source(sentinel.proc1_stderr, ANY),
+                 call.add_source(sentinel.proc2_stdout, ANY),
+                 call.add_source(sentinel.proc2_stderr, ANY)])
 
 
 class WriteFileFilterTests (MockingTestCase):
