@@ -172,8 +172,10 @@ class IOManager (object):
 class IOMux (object):
     def __init__(self, _IOManager, _ProcessManager):
         self._iom = _IOManager()
+        self._iom.add_source(sys.stdin.fileno(), sentinel.stdinSourceHandler)
+        self._iom.add_sink(sys.stdout.fileno(), sentinel.stdoutSinkHandler)
+
         self._pm = _ProcessManager(self._iom)
-        raise NotImplementedError(`IOMux.__init__`)
 
 
 class WriteFileFilter (object):
@@ -491,24 +493,18 @@ class IOMuxTests (MockingTestCase):
     def setUp(self):
         self.m_IOManager = MagicMock()
         self.m_ProcessManager = MagicMock()
-        self.m_iom = self.m_IOManager.return_value
-        self.m_pm = self.m_ProcessManager.return_value
-
         self.iomux = IOMux(self.m_IOManager, self.m_ProcessManager)
 
     def test___init__behavior(self):
         self._assertCallsEqual(
             self.m_IOManager,
-            [call()])
-
-        self._assertCallsEqual(
-            self.m_iom,
-            [call.add_source(sys.stdin.fileno(), sentinel.stdinSourceHandler),
-             call.add_sink(sys.stdout.fileno(), sentinel.stdoutSinkHandler)])
+            [call(),
+             call().add_source(sys.stdin.fileno(), sentinel.stdinSourceHandler),
+             call().add_sink(sys.stdout.fileno(), sentinel.stdoutSinkHandler)])
 
         self._assertCallsEqual(
             self.m_ProcessManager,
-            [call(self.m_iom)])
+            [call(self.m_IOManager.return_value)])
 
 
 class WriteFileFilterTests (MockingTestCase):
