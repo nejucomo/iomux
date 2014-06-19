@@ -251,8 +251,8 @@ def run_unit_tests_without_coverage(opts):
 
 
 class MockingTestCase (unittest.TestCase):
-    def _assertCallsEqual(self, mock, calls):
-        self.assertEqual(mock._mock_mock_calls, calls)
+    def _assertCallsEqual(self, mockobj, calls):
+        self.assertEqual(mockobj._mock_mock_calls, calls)
 
 
 class CommandlineArgumentTests (MockingTestCase):
@@ -319,160 +319,160 @@ class IOManagerTests (MockingTestCase):
         self.m = IOManager()
 
     def test_process_events_timeout(self):
-        with patch('select.select') as mockselect:
+        with patch('select.select') as m_select:
             rfd = 42
-            mockout = MagicMock()
-            mockselect.return_value = ([], [], [])
+            m_out = MagicMock()
+            m_select.return_value = ([], [], [])
 
-            self.m.add_source(rfd, mockout)
+            self.m.add_source(rfd, m_out)
             cont = self.m.process_events()
 
-            self._assertCallsEqual(mockselect, [call([rfd], [], [], SELECT_INTERVAL)])
-            self._assertCallsEqual(mockout, [])
+            self._assertCallsEqual(m_select, [call([rfd], [], [], SELECT_INTERVAL)])
+            self._assertCallsEqual(m_out, [])
             self.assertEqual(True, cont)
 
     def test_read(self):
-        with patch('select.select') as mockselect, patch('os.read') as mockread:
+        with patch('select.select') as m_select, patch('os.read') as m_read:
             rfd = 42
-            mockout = MagicMock()
-            mockselect.return_value = ([rfd], [], [])
-            mockread.return_value = 'banana'
+            m_out = MagicMock()
+            m_select.return_value = ([rfd], [], [])
+            m_read.return_value = 'banana'
 
-            self.m.add_source(rfd, mockout)
+            self.m.add_source(rfd, m_out)
             cont = self.m.process_events()
 
-            self._assertCallsEqual(mockselect, [call([rfd], [], [], SELECT_INTERVAL)])
-            self._assertCallsEqual(mockread, [call.read(rfd, BUFSIZE)])
-            self._assertCallsEqual(mockout, [call.write('banana')])
+            self._assertCallsEqual(m_select, [call([rfd], [], [], SELECT_INTERVAL)])
+            self._assertCallsEqual(m_read, [call.read(rfd, BUFSIZE)])
+            self._assertCallsEqual(m_out, [call.write('banana')])
             self.assertEqual(True, cont)
 
     def test_read_close(self):
-        with patch('select.select') as mockselect, patch('os.read') as mockread:
+        with patch('select.select') as m_select, patch('os.read') as m_read:
             rfd = 42
-            mockout = MagicMock()
-            mockselect.return_value = ([rfd], [], [])
-            mockread.return_value = ''
+            m_out = MagicMock()
+            m_select.return_value = ([rfd], [], [])
+            m_read.return_value = ''
 
-            self.m.add_source(rfd, mockout)
+            self.m.add_source(rfd, m_out)
             cont = self.m.process_events()
 
-            self._assertCallsEqual(mockselect, [call([rfd], [], [], SELECT_INTERVAL)])
-            self._assertCallsEqual(mockread, [call.read(rfd, BUFSIZE)])
-            self._assertCallsEqual(mockout, [call.close()])
+            self._assertCallsEqual(m_select, [call([rfd], [], [], SELECT_INTERVAL)])
+            self._assertCallsEqual(m_read, [call.read(rfd, BUFSIZE)])
+            self._assertCallsEqual(m_out, [call.close()])
             self.assertEqual(False, cont)
 
     def test_write_complete(self):
-        with patch('select.select') as mockselect, patch('os.write') as mockwrite:
+        with patch('select.select') as m_select, patch('os.write') as m_write:
             wfd = 42
-            mocksinkbuffer = MagicMock()
-            mocksinkbuffer.pending.return_value = True
-            mocksinkbuffer.take.return_value = 'foobar'
-            mockwrite.return_value = 6
-            mockselect.return_value = ([], [wfd], [])
+            m_sinkbuffer = MagicMock()
+            m_sinkbuffer.pending.return_value = True
+            m_sinkbuffer.take.return_value = 'foobar'
+            m_write.return_value = 6
+            m_select.return_value = ([], [wfd], [])
 
-            self.m.add_sink(wfd, mocksinkbuffer)
+            self.m.add_sink(wfd, m_sinkbuffer)
             cont = self.m.process_events()
 
-            self._assertCallsEqual(mockselect, [call([], [wfd], [], SELECT_INTERVAL)])
+            self._assertCallsEqual(m_select, [call([], [wfd], [], SELECT_INTERVAL)])
             self._assertCallsEqual(
-                mocksinkbuffer,
+                m_sinkbuffer,
                 [call.pending(),
                  call.take()])
-            self._assertCallsEqual(mockwrite, [call(wfd, 'foobar')])
+            self._assertCallsEqual(m_write, [call(wfd, 'foobar')])
             self.assertEqual(True, cont)
 
     def test_write_partial(self):
-        with patch('select.select') as mockselect, patch('os.write') as mockwrite:
+        with patch('select.select') as m_select, patch('os.write') as m_write:
             wfd = 42
-            mocksinkbuffer = MagicMock()
-            mocksinkbuffer.pending.return_value = True
-            mocksinkbuffer.take.return_value = 'foobar'
-            mockwrite.return_value = 3
-            mockselect.return_value = ([], [wfd], [])
+            m_sinkbuffer = MagicMock()
+            m_sinkbuffer.pending.return_value = True
+            m_sinkbuffer.take.return_value = 'foobar'
+            m_write.return_value = 3
+            m_select.return_value = ([], [wfd], [])
 
-            self.m.add_sink(wfd, mocksinkbuffer)
+            self.m.add_sink(wfd, m_sinkbuffer)
             cont = self.m.process_events()
 
-            self._assertCallsEqual(mockselect, [call([], [wfd], [], SELECT_INTERVAL)])
+            self._assertCallsEqual(m_select, [call([], [wfd], [], SELECT_INTERVAL)])
             self._assertCallsEqual(
-                mocksinkbuffer,
+                m_sinkbuffer,
                 [call.pending(),
                  call.take(),
                  call.put_back('bar')])
-            self._assertCallsEqual(mockwrite, [call(wfd, 'foobar')])
+            self._assertCallsEqual(m_write, [call(wfd, 'foobar')])
             self.assertEqual(True, cont)
 
     def test_write_close(self):
-        with patch('select.select') as mockselect, patch('os.close') as mockclose:
+        with patch('select.select') as m_select, patch('os.close') as m_close:
             wfd = 42
-            mocksinkbuffer = MagicMock()
-            mocksinkbuffer.pending.return_value = True
-            mocksinkbuffer.take.return_value = None
-            mockselect.return_value = ([], [wfd], [])
+            m_sinkbuffer = MagicMock()
+            m_sinkbuffer.pending.return_value = True
+            m_sinkbuffer.take.return_value = None
+            m_select.return_value = ([], [wfd], [])
 
-            self.m.add_sink(wfd, mocksinkbuffer)
+            self.m.add_sink(wfd, m_sinkbuffer)
             cont = self.m.process_events()
 
-            self._assertCallsEqual(mockselect, [call([], [wfd], [], SELECT_INTERVAL)])
+            self._assertCallsEqual(m_select, [call([], [wfd], [], SELECT_INTERVAL)])
             self._assertCallsEqual(
-                mocksinkbuffer,
+                m_sinkbuffer,
                 [call.pending(),
                  call.take()])
-            self._assertCallsEqual(mockclose, [call(wfd)])
+            self._assertCallsEqual(m_close, [call(wfd)])
             self.assertEqual(False, cont)
 
 
 class ProcessManagerTests (MockingTestCase):
     def setUp(self):
-        self.iomock = MagicMock()
-        self.pm = ProcessManager(self.iomock)
+        self.m_iom = MagicMock()
+        self.pm = ProcessManager(self.m_iom)
 
     def test_start_subprocess(self):
         argv1 = ['echo', 'hello', 'world']
         argv2 = ['date']
 
-        with patch('subprocess.Popen') as mockPopen, patch('os.close') as mockClose:
+        with patch('subprocess.Popen') as m_Popen, patch('os.close') as m_close:
 
-            mockProc1 = MagicMock()
-            mockProc1.pid = 1001
-            mockProc1.stdin.fileno.return_value = sentinel.proc1_stdin
-            mockProc1.stdout.fileno.return_value = sentinel.proc1_stdout
-            mockProc1.stderr.fileno.return_value = sentinel.proc1_stderr
+            m_proc1 = MagicMock()
+            m_proc1.pid = 1001
+            m_proc1.stdin.fileno.return_value = sentinel.proc1_stdin
+            m_proc1.stdout.fileno.return_value = sentinel.proc1_stdout
+            m_proc1.stderr.fileno.return_value = sentinel.proc1_stderr
 
-            mockProc2 = MagicMock()
-            mockProc2.pid = 1002
-            mockProc2.stdin.fileno.return_value = sentinel.proc2_stdin
-            mockProc2.stdout.fileno.return_value = sentinel.proc2_stdout
-            mockProc2.stderr.fileno.return_value = sentinel.proc2_stderr
+            m_proc2 = MagicMock()
+            m_proc2.pid = 1002
+            m_proc2.stdin.fileno.return_value = sentinel.proc2_stdin
+            m_proc2.stdout.fileno.return_value = sentinel.proc2_stdout
+            m_proc2.stderr.fileno.return_value = sentinel.proc2_stderr
 
-            mockPopen.side_effect = [mockProc1, mockProc2]
+            m_Popen.side_effect = [m_proc1, m_proc2]
 
             self.pm.start_subprocess(argv1)
             self.pm.start_subprocess(argv2)
 
             self._assertCallsEqual(
-                mockPopen,
+                m_Popen,
                 [call(argv1, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE),
                  call(argv2, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)])
 
             self._assertCallsEqual(
-                mockProc1,
+                m_proc1,
                 [call.stdin.fileno(),
                  call.stdout.fileno(),
                  call.stderr.fileno()])
 
             self._assertCallsEqual(
-                mockProc2,
+                m_proc2,
                 [call.stdin.fileno(),
                  call.stdout.fileno(),
                  call.stderr.fileno()])
 
             self._assertCallsEqual(
-                mockClose,
+                m_close,
                 [call(sentinel.proc2_stdin)])
 
             self._assertCallsEqual(
-                self.iomock,
+                self.m_iom,
                 [call.add_sink(sentinel.proc1_stdin, ANY),
                  call.add_source(sentinel.proc1_stdout, ANY),
                  call.add_source(sentinel.proc1_stderr, ANY),
@@ -482,9 +482,9 @@ class ProcessManagerTests (MockingTestCase):
 
 class WriteFileFilterTests (MockingTestCase):
     def test_writefilefilter(self):
-        mockfile = MagicMock()
+        m_file = MagicMock()
 
-        wff = WriteFileFilter(mockfile)
+        wff = WriteFileFilter(m_file)
         wff.write('foo')
         wff.write('bar')
         wff.flush()
@@ -492,7 +492,7 @@ class WriteFileFilterTests (MockingTestCase):
         wff.close()
 
         self._assertCallsEqual(
-            mockfile,
+            m_file,
             [call.write('foo'),
              call.write('bar'),
              call.flush(),
@@ -523,8 +523,8 @@ class FormatWriterTests (MockingTestCase):
 
 class TimestamperTests (unittest.TestCase):
     def test_timestamper(self):
-        with patch('time.time') as mocktime:
-            mocktime.return_value = 0
+        with patch('time.time') as m_time:
+            m_time.return_value = 0
 
             ts = Timestamper(ISO8601)
             for _ in range(2):
