@@ -169,6 +169,13 @@ class IOManager (object):
         return len(self._sources) + len(self._sinks) > 0
 
 
+class IOMux (object):
+    def __init__(self, _IOManager, _ProcessManager):
+        self._iom = _IOManager()
+        self._pm = _ProcessManager(self._iom)
+        raise NotImplementedError(`IOMux.__init__`)
+
+
 class WriteFileFilter (object):
     def __init__(self, outstream):
         self._f = outstream
@@ -478,6 +485,30 @@ class ProcessManagerTests (MockingTestCase):
                  call.add_source(sentinel.proc1_stderr, ANY),
                  call.add_source(sentinel.proc2_stdout, ANY),
                  call.add_source(sentinel.proc2_stderr, ANY)])
+
+
+class IOMuxTests (MockingTestCase):
+    def setUp(self):
+        self.m_IOManager = MagicMock()
+        self.m_ProcessManager = MagicMock()
+        self.m_iom = self.m_IOManager.return_value
+        self.m_pm = self.m_ProcessManager.return_value
+
+        self.iomux = IOMux(self.m_IOManager, self.m_ProcessManager)
+
+    def test___init__behavior(self):
+        self._assertCallsEqual(
+            self.m_IOManager,
+            [call()])
+
+        self._assertCallsEqual(
+            self.m_iom,
+            [call.add_source(sys.stdin.fileno(), sentinel.stdinSourceHandler),
+             call.add_sink(sys.stdout.fileno(), sentinel.stdoutSinkHandler)])
+
+        self._assertCallsEqual(
+            self.m_ProcessManager,
+            [call(self.m_iom)])
 
 
 class WriteFileFilterTests (MockingTestCase):
