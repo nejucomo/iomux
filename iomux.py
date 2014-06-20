@@ -177,6 +177,9 @@ class IOMux (object):
 
         self._pm = _ProcessManager(self._iom)
 
+    def run(self, commands):
+        raise NotImplementedError(`IOMux.run`)
+
 
 class WriteFileFilter (object):
     def __init__(self, outstream):
@@ -505,6 +508,28 @@ class IOMuxTests (MockingTestCase):
         self._assertCallsEqual(
             self.m_ProcessManager,
             [call(self.m_IOManager.return_value)])
+
+    def test_run_no_commands(self):
+        self.assertRaises(AssertionError, self.iomux.run, [])
+
+
+    def test_run_multiple_commands(self):
+        self.m_IOManager.return_value.process_events.side_effect = [True, False]
+
+        argv0 = ['cat', '/etc/motd']
+        argv1 = ['expr', '2', '+', '3']
+
+        self.iomux.run([argv0, argv1])
+
+        self._assertCallsEqual(
+            self.m_ProcessManager,
+            [call().start_subprocess(argv0),
+             call().start_subprocess(argv1)])
+
+        self._assertCallsEqual(
+            self.m_IOManager,
+            [call().process_events(),
+             call().process_events()])
 
 
 class WriteFileFilterTests (MockingTestCase):
