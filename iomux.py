@@ -829,18 +829,30 @@ class SinkBufferTests (MockingTestCase):
         sb.write('bar\n')
         self.assertEqual(True, sb.pending())
 
-        self.assertEqual('foobar\n', sb.take())
+        self.assertEqual('foo', sb.take())
+        self.assertEqual(True, sb.pending())
+
+        self.assertEqual('bar\n', sb.take())
         self.assertEqual(False, sb.pending())
 
-        sb.put_back('bar\n')
+        sb.put_back('ar\n')
         self.assertEqual(True, sb.pending())
 
         sb.write('quz')
         sb.flush() # No op.
         sb.write('wux')
 
-        self.assertEqual('bar\nquzwux', sb.take())
+        self.assertEqual('ar\n', sb.take())
+        self.assertEqual(True, sb.pending())
+
+        self.assertEqual('quz', sb.take())
+        self.assertEqual(True, sb.pending())
+
+        self.assertEqual('wux', sb.take())
         self.assertEqual(False, sb.pending())
+
+        # Invariant violation:
+        self.assertRaises(AssertionError, sb.take)
 
         sb.close()
         self.assertEqual(False, sb.pending())
