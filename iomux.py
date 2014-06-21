@@ -180,6 +180,13 @@ class IOMux (object):
     def run(self, commands):
         assert len(commands) > 0, 'No commands passed: %r' % (commands,)
 
+        for command in commands:
+            self._pm.start_subprocess(command)
+
+        while self._iom.process_events():
+            # TODO: Check for exited subprocesses and handle their exit statuses.
+            pass
+
 
 class WriteFileFilter (object):
     def __init__(self, outstream):
