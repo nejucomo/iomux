@@ -9,7 +9,7 @@ import argparse
 import unittest
 import subprocess
 import mock
-from mock import ANY, call, sentinel
+from mock import call, sentinel
 
 
 DESCRIPTION = """
@@ -550,13 +550,26 @@ class ProcessManagerTests (MockingTestCase):
             m_close,
             [call(sentinel.proc2_stdin)])
 
+        class EQCB (object):
+            def __init__(self, eqcb, repstr):
+                self._eqcb = eqcb
+                self._repstr = repstr
+
+            def __eq__(self, other):
+                return self._eqcb(other)
+
+            def __repr__(self):
+                return self._repstr
+
+        ArgIsInstance = lambda T: EQCB(lambda x: isinstance(x, T), 'ArgIsInstance(%s)' % (T.__name__,))
+
         self._assertCallsEqual(
             self.m_iom,
-            [call.add_sink(sentinel.proc1_stdin, ANY),
-             call.add_source(sentinel.proc1_stdout, ANY),
-             call.add_source(sentinel.proc1_stderr, ANY),
-             call.add_source(sentinel.proc2_stdout, ANY),
-             call.add_source(sentinel.proc2_stderr, ANY)])
+            [call.add_sink(sentinel.proc1_stdin, EQCB(lambda _: True, 'ANY')), # TODO: Spec/Impl a sink handler type.
+             call.add_source(sentinel.proc1_stdout, ArgIsInstance(LineBuffer)),
+             call.add_source(sentinel.proc1_stderr, ArgIsInstance(LineBuffer)),
+             call.add_source(sentinel.proc2_stdout, ArgIsInstance(LineBuffer)),
+             call.add_source(sentinel.proc2_stderr, ArgIsInstance(LineBuffer))])
 
     def test_start_subprocess(self):
         self._subtest_start_subprocess_twice()
