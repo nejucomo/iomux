@@ -127,6 +127,17 @@ class ProcessManager (object):
 
         self._procs[p.pid] = p
 
+    def process_events_and_cleanup_processes(self):
+        iocont = self._iom.process_events()
+
+        (pid, status) = os.waitpid(-1, os.WNOHANG)
+        if (pid, status) != (0, 0):
+            # TODO: log exit status!
+            del self._procs[pid]
+
+        # Continue if there're open IO streams *or* running subprocesses:
+        return iocont or len(self._procs) > 0
+
 
 class IOManager (object):
     def __init__(self):
@@ -184,8 +195,7 @@ class IOMux (object):
         for command in commands:
             self._pm.start_subprocess(command)
 
-        while self._iom.process_events():
-            # TODO: Check for exited subprocesses and handle their exit statuses.
+        while self._pm.process_events_and_cleanup_processes():
             pass
 
 
@@ -543,8 +553,10 @@ class ProcessManagerTests (MockingTestCase):
     def test_start_subprocess(self):
         self._subtest_start_subprocess_twice()
 
-    def test_process_events_and_cleanup_processes_timeout_and_success_exits(self):
+    def test_process_events_and_cleanup_processes_timeout_and_success_exits_and_io_completes_first(self):
         self._subtest_start_subprocess_twice()
+
+        self.m_iom.process_events.side_effect = [True, False, False]
 
         m_waitpid = self._patch('os.waitpid')
 
