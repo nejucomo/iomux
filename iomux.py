@@ -131,9 +131,11 @@ class ProcessManager (object):
         iocont = self._iom.process_events()
 
         (pid, status) = os.waitpid(-1, os.WNOHANG)
-        if (pid, status) != (0, 0):
+        while (pid, status) != (0, 0):
             # TODO: log exit status!
             del self._procs[pid]
+
+            (pid, status) = os.waitpid(-1, os.WNOHANG)
 
         # Continue if there're open IO streams *or* running subprocesses:
         return iocont or len(self._procs) > 0
