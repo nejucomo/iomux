@@ -26,12 +26,13 @@ BUFSIZE = 2**14
 
 
 def main(args = sys.argv[1:]):
-    opts = parse_args(args)
+    iomux = IOMux()
+    opts = parse_args(iomux, args)
     sys.exit(opts.mainfunc(opts))
 
 
 # Argument parsing:
-def parse_args(args):
+def parse_args(iomux, args):
     p = argparse.ArgumentParser(
         description=DESCRIPTION,
         formatter_class=argparse.RawTextHelpFormatter)
@@ -65,14 +66,14 @@ def parse_args(args):
         optval = getattr(opts, dest)
         if optval:
             if optname == 'COMMANDS':
-                optval = run_iomux
+                optval = iomux.run
             if opts.mainfunc is None:
                 optval.optionname = optname
                 opts.mainfunc = optval
             else:
                 p.error('%r and %r are mutually exclusive.' % (opts.mainfunc.optionname, optname))
 
-    if opts.mainfunc is run_iomux:
+    if opts.mainfunc is iomux.run:
         # Split subcommands into separate arguments lists, and check
         # for empty commands (which are a usage error).
         cmds = []
@@ -102,13 +103,6 @@ def parse_args(args):
 
 
 # Main application:
-def run_iomux(opts):
-    iom = IOManager()
-    pm = ProcessManager(iom)
-
-    raise NotImplementedError(`run_iomux, pm`)
-
-
 class ProcessManager (object):
     def __init__(self, iomanager):
         self._iom = iomanager
@@ -184,7 +178,7 @@ class IOManager (object):
 
 
 class IOMux (object):
-    def __init__(self, _IOManager, _ProcessManager):
+    def __init__(self, _IOManager=IOManager, _ProcessManager=ProcessManager):
         self._iom = _IOManager()
         self._iom.add_source(sys.stdin.fileno(), sentinel.stdinSourceHandler)
         self._iom.add_sink(sys.stdout.fileno(), sentinel.stdoutSinkHandler)
@@ -311,63 +305,75 @@ class MockingTestCase (unittest.TestCase):
 
 
 class CommandlineArgumentTests (MockingTestCase):
+    def setUp(self):
+        MockingTestCase.setUp(self)
+
+        self.m_iomux = self._make_mock()
+        self.m_iomux.run = sentinel.IOMux_run
+
+    def _parse_args(self, args):
+        result = parse_args(self.m_iomux, args)
+        self._assertCallsEqual(self.m_iomux, [])
+        return result
+
+    def _capture_stdout_usage_info(self, args):
+        assert type(args) is list, `args`
+        out = self._patch('sys.stdout')
+        err = self._patch('sys.stderr')
+        self.assertRaises(SystemExit, self._parse_args, args)
+        return (out, err)
+
+    def _assert_usage_error(self, args):
+        (out, err) = self._capture_stdout_usage_info(args)
+        self._assertCallsEqual(out.write, [])
+        self.failUnless(err.write.called)
+        return (out, err)
+
     def test_parse_unit_test(self):
-        opts = parse_args(['--unit-test'])
+        opts = self._parse_args(['--unit-test'])
         self.assertIs(run_unit_tests_with_coverage, opts.mainfunc)
 
     def test_parse_unit_test_without_coverage(self):
-        opts = parse_args(['--unit-test-without-coverage'])
+        opts = self._parse_args(['--unit-test-without-coverage'])
         self.assertIs(run_unit_tests_without_coverage, opts.mainfunc)
 
     def test_exclusive_unittest_options(self):
-        self._assertUsageError('--unit-test', '--unit-test-without-coverage')
+        self._assert_usage_error(['--unit-test', '--unit-test-without-coverage'])
 
     def test_exclusive_test_option_and_command(self):
-        self._assertUsageError('--unit-test', 'echo')
+        self._assert_usage_error(['--unit-test', 'echo'])
 
     def test_colliding_arguments_in_subcommands(self):
-        opts = parse_args(['echo', '--unit-test'])
+        opts = self._parse_args(['echo', '--unit-test'])
         self.assertEqual([['echo', '--unit-test']], opts.COMMANDS)
 
     def test_no_args(self):
-        (helpout, helperr) = self._captureStdout('--help')
-        (noargsout, noargserr) = self._captureStdout()
+        (helpout, helperr) = self._capture_stdout_usage_info(['--help'])
+        (noargsout, noargserr) = self._capture_stdout_usage_info([])
 
         self.assertEqual(helpout.method_calls, noargsout.method_calls)
         self.assertEqual(helperr.method_calls, noargserr.method_calls)
 
     def test_no_dash_dash_echo(self):
-        opts = parse_args(['echo'])
-        self.assertIs(run_iomux, opts.mainfunc)
+        opts = self._parse_args(['echo'])
+        self.assertIs(self.m_iomux.run, opts.mainfunc)
         self.assertEqual([['echo']], opts.COMMANDS)
 
     def test_multiple_commands(self):
-        opts = parse_args(['echo', '-n', 'foo', '--', 'cat', 'bar'])
-        self.assertIs(run_iomux, opts.mainfunc)
+        opts = self._parse_args(['echo', '-n', 'foo', '--', 'cat', 'bar'])
+        self.assertIs(self.m_iomux.run, opts.mainfunc)
         self.assertEqual([['echo', '-n', 'foo'], ['cat', 'bar']], opts.COMMANDS)
 
     def test_leading_dashdash(self):
-        opts = parse_args(['--', 'echo', '-n', 'foo', '--', 'cat', 'bar'])
-        self.assertIs(run_iomux, opts.mainfunc)
+        opts = self._parse_args(['--', 'echo', '-n', 'foo', '--', 'cat', 'bar'])
+        self.assertIs(self.m_iomux.run, opts.mainfunc)
         self.assertEqual([['echo', '-n', 'foo'], ['cat', 'bar']], opts.COMMANDS)
 
     def test_empty_command_trailing_dashdash(self):
-        self._assertUsageError('echo', '-n', 'foo', '--')
+        self._assert_usage_error(['echo', '-n', 'foo', '--'])
 
     def test_empty_command_double_dashdash(self):
-        self._assertUsageError('cat', '--', '--', 'echo')
-
-    def _captureStdout(self, *args):
-        out = self._patch('sys.stdout')
-        err = self._patch('sys.stderr')
-        self.assertRaises(SystemExit, parse_args, args)
-        return (out, err)
-
-    def _assertUsageError(self, *args):
-        (out, err) = self._captureStdout(*args)
-        self._assertCallsEqual(out.write, [])
-        self.failUnless(err.write.called)
-        return (out, err)
+        self._assert_usage_error(['cat', '--', '--', 'echo'])
 
 
 class IOManagerTests (MockingTestCase):
