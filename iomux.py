@@ -178,7 +178,7 @@ class IOMux (object):
         self._pm = _ProcessManager(self._iom)
 
     def run(self, commands):
-        raise NotImplementedError(`IOMux.run`)
+        assert len(commands) > 0, 'No commands passed: %r' % (commands,)
 
 
 class WriteFileFilter (object):
