@@ -20,6 +20,7 @@ for all children to exit.  The exit value is 0 if all children exited
 with 0, otherwise it is the first non-zero child's status.
 """
 
+DEFAULT_TEMPLATE = '{time} {pid} {stream} {message}'
 ISO8601 = '%Y-%m-%d %H:%M:%S%z'
 SELECT_INTERVAL = 1.3
 BUFSIZE = 2**14
@@ -116,8 +117,25 @@ class ProcessManager (object):
         else:
             self._iom.add_sink(p.stdin.fileno(), sentinel.UnimplementedSinkHandler)
 
-        self._iom.add_source(p.stdout.fileno(), sentinel.UnimplementedSourceHandler)
-        self._iom.add_source(p.stderr.fileno(), sentinel.UnimplementedSourceHandler)
+        writers = []
+        for streamtag in 'IOE':
+            fmtwriter = FormatWriter(
+                sentinel.UnimplementedSinkBuffer,
+                DEFAULT_TEMPLATE,
+                time=Timestamper(),
+                pid=lambda : p.pid,
+                stream=lambda t=streamtag: t)
+
+            linewriter = LineBuffer(fmtwriter)
+
+            writers.append(linewriter)
+
+        [infowriter, outwriter, errwriter] = writers
+
+        self._iom.add_source(p.stdout.fileno(), outwriter)
+        self._iom.add_source(p.stderr.fileno(), errwriter)
+
+        infowriter.write('Launched: %r\n' % (args,))
 
         self._procs[p.pid] = p
 
@@ -210,6 +228,7 @@ class WriteFileFilter (object):
 
 
 class FormatWriter (WriteFileFilter):
+    """I act like a file, but format each write according to template and generated parameters."""
     def __init__(self, outstream, template, **paramgens):
         WriteFileFilter.__init__(self, outstream)
         self._tmpl = template
@@ -223,7 +242,7 @@ class FormatWriter (WriteFileFilter):
 
 
 class Timestamper (object):
-    def __init__(self, format):
+    def __init__(self, format=ISO8601):
         self.format = format
 
     def __call__(self):
@@ -231,6 +250,7 @@ class Timestamper (object):
 
 
 class LineBuffer (WriteFileFilter):
+    """I act like a writable file, but I always call my downstream writer with exact single lines."""
     def __init__(self, outstream):
         WriteFileFilter.__init__(self, outstream)
         self._buf = ''
