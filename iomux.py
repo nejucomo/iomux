@@ -269,6 +269,11 @@ class LineBuffer (WriteFileFilter):
         self._f.flush()
 
 
+class SinkBuffer (object):
+    def __init__(self):
+        raise NotImplementedError(`SinkBuffer`)
+
+
 # Unit tests:
 def run_unit_tests_with_coverage(opts):
     prog = os.path.abspath(sys.argv[0])
@@ -810,6 +815,27 @@ class LineBufferTests (MockingTestCase):
             [call.write('foobar\n'),
              call.write('quz\n'),
              call.flush()])
+
+
+class SinkBufferTests (MockingTestCase):
+    def test_sink_buffer(self):
+        sb = SinkBuffer()
+        sb.write('foo')
+        sb.write('bar\n')
+
+        self.assertEqual('foobar\n', sb.take())
+
+        sb.put_back('bar\n')
+        sb.write('quz')
+        sb.flush() # No op.
+        sb.write('wux')
+
+        self.assertEqual('bar\nquzwux', sb.take())
+
+        sb.close()
+
+        # Invariant violation:
+        self.assertRaises(AssertionError, sb.write)
 
 
 
