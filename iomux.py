@@ -561,9 +561,55 @@ class ProcessManagerTests (MockingTestCase):
         m_waitpid = self._patch('os.waitpid')
 
         m_waitpid.side_effect = [
-            (0, 0), # WNOHANG "timeout",
+            # Loop 1:
+            (0, 0),
+            # Loop 2:
+            (self.m_proc2.pid, 0),
+            (0, 0),
+            # Loop 3:
+            (self.m_proc1.pid, 0),
+            (0, 0),
+            ]
+
+        self._reset_mocks()
+        self.assertEqual(True, self.pm.process_events_and_cleanup_processes())
+        self._assertCallsEqual(self.m_iom, [call.process_events()])
+        self._assertCallsEqual(
+            m_waitpid,
+            [call(-1, os.WNOHANG)])
+
+        self._reset_mocks()
+        self.assertEqual(True, self.pm.process_events_and_cleanup_processes())
+        self._assertCallsEqual(self.m_iom, [call.process_events()])
+        self._assertCallsEqual(
+            m_waitpid,
+            [call(-1, os.WNOHANG),
+             call(-1, os.WNOHANG)])
+
+        self._reset_mocks()
+        self.assertEqual(False, self.pm.process_events_and_cleanup_processes())
+        self._assertCallsEqual(self.m_iom, [call.process_events()])
+        self._assertCallsEqual(
+            m_waitpid,
+            [call(-1, os.WNOHANG),
+             call(-1, os.WNOHANG)])
+
+    def test_process_events_and_cleanup_processes_timeout_and_success_exits_and_io_completes_last(self):
+        self._subtest_start_subprocess_twice()
+
+        self.m_iom.process_events.side_effect = [True, True, False]
+
+        m_waitpid = self._patch('os.waitpid')
+
+        m_waitpid.side_effect = [
+            # Loop 1:
+            (0, 0),
+            # Loop 2:
             (self.m_proc2.pid, 0),
             (self.m_proc1.pid, 0),
+            (0, 0),
+            # Loop 3:
+            (0, 0),
             ]
 
         self._reset_mocks()
@@ -574,7 +620,11 @@ class ProcessManagerTests (MockingTestCase):
         self._reset_mocks()
         self.assertEqual(True, self.pm.process_events_and_cleanup_processes())
         self._assertCallsEqual(self.m_iom, [call.process_events()])
-        self._assertCallsEqual(m_waitpid, [call(-1, os.WNOHANG)])
+        self._assertCallsEqual(
+            m_waitpid,
+            [call(-1, os.WNOHANG),
+             call(-1, os.WNOHANG),
+             call(-1, os.WNOHANG)])
 
         self._reset_mocks()
         self.assertEqual(False, self.pm.process_events_and_cleanup_processes())
