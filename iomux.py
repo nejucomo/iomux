@@ -498,6 +498,10 @@ class IOMuxTests (MockingTestCase):
         self.m_ProcessManager = MagicMock()
         self.iomux = IOMux(self.m_IOManager, self.m_ProcessManager)
 
+    def _reset_mocks(self):
+        self.m_IOManager.reset_mock()
+        self.m_ProcessManager.reset_mock()
+
     def test___init__behavior(self):
         self._assertCallsEqual(
             self.m_IOManager,
@@ -510,10 +514,22 @@ class IOMuxTests (MockingTestCase):
             [call(self.m_IOManager.return_value)])
 
     def test_run_no_commands(self):
+        self._reset_mocks()
+
         self.assertRaises(AssertionError, self.iomux.run, [])
+
+        self._assertCallsEqual(
+            self.m_IOManager,
+            [])
+
+        self._assertCallsEqual(
+            self.m_ProcessManager,
+            [])
 
 
     def test_run_multiple_commands(self):
+        self._reset_mocks()
+
         self.m_IOManager.return_value.process_events.side_effect = [True, False]
 
         argv0 = ['cat', '/etc/motd']
