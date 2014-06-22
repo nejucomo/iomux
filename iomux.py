@@ -641,8 +641,8 @@ class ProcessManagerTests (MockingTestCase):
 
         self._assertCallsEqual(
             self.m_stdoutwriter,
-            [call.write("1970-01-01 00:00:00+0000 1001 * Launching ['echo', 'hello', 'world']\n"),
-             call.write("1970-01-01 00:00:01+0000 1002 * Launching ['date']\n")])
+            [call.enqueue_data("1970-01-01 00:00:00+0000 1001 * Launched ['echo', 'hello', 'world']\n"),
+             call.enqueue_data("1970-01-01 00:00:01+0000 1002 * Launched ['date']\n")])
 
     def test_start_subprocess(self):
         self._subtest_start_subprocess_twice()
