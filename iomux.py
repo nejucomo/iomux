@@ -137,7 +137,7 @@ class ProcessManager (object):
 
         self._procs[p.pid] = p
 
-    def process_events_and_cleanup_processes(self):
+    def do_turn(self):
         iocont = self._iom.process_events()
 
         (pid, status) = self._waitpid()
@@ -239,7 +239,7 @@ class IOMux (object):
         for command in commands:
             self._pm.start_subprocess(command)
 
-        while self._pm.process_events_and_cleanup_processes():
+        while self._pm.do_turn():
             pass
 
 
@@ -692,7 +692,7 @@ class ProcessManagerTests (MockingTestCase):
     def test_start_subprocess(self):
         self._subtest_start_subprocess_twice()
 
-    def test_process_events_and_cleanup_processes_timeout_and_success_exits_and_io_completes_first(self):
+    def test_do_turn_timeout_and_success_exits_and_io_completes_first(self):
         self._subtest_start_subprocess_twice()
 
         self.m_iom.process_events.side_effect = [True, False, False]
@@ -710,14 +710,14 @@ class ProcessManagerTests (MockingTestCase):
             ]
 
         self._reset_mocks()
-        self.assertEqual(True, self.pm.process_events_and_cleanup_processes())
+        self.assertEqual(True, self.pm.do_turn())
         self._assertCallsEqual(self.m_iom, [call.process_events()])
         self._assertCallsEqual(
             m_waitpid,
             [call(-1, os.WNOHANG)])
 
         self._reset_mocks()
-        self.assertEqual(True, self.pm.process_events_and_cleanup_processes())
+        self.assertEqual(True, self.pm.do_turn())
         self._assertCallsEqual(self.m_iom, [call.process_events()])
         self._assertCallsEqual(
             m_waitpid,
@@ -725,13 +725,13 @@ class ProcessManagerTests (MockingTestCase):
              call(-1, os.WNOHANG)])
 
         self._reset_mocks()
-        self.assertEqual(False, self.pm.process_events_and_cleanup_processes())
+        self.assertEqual(False, self.pm.do_turn())
         self._assertCallsEqual(self.m_iom, [call.process_events()])
         self._assertCallsEqual(
             m_waitpid,
             [call(-1, os.WNOHANG)])
 
-    def test_process_events_and_cleanup_processes_timeout_and_success_exits_and_io_completes_last(self):
+    def test_do_turn_timeout_and_success_exits_and_io_completes_last(self):
         self._subtest_start_subprocess_twice()
 
         self.m_iom.process_events.side_effect = [True, True, False]
@@ -747,12 +747,12 @@ class ProcessManagerTests (MockingTestCase):
             ]
 
         self._reset_mocks()
-        self.assertEqual(True, self.pm.process_events_and_cleanup_processes())
+        self.assertEqual(True, self.pm.do_turn())
         self._assertCallsEqual(self.m_iom, [call.process_events()])
         self._assertCallsEqual(m_waitpid, [call(-1, os.WNOHANG)])
 
         self._reset_mocks()
-        self.assertEqual(True, self.pm.process_events_and_cleanup_processes())
+        self.assertEqual(True, self.pm.do_turn())
         self._assertCallsEqual(self.m_iom, [call.process_events()])
         self._assertCallsEqual(
             m_waitpid,
@@ -760,7 +760,7 @@ class ProcessManagerTests (MockingTestCase):
              call(-1, os.WNOHANG)])
 
         self._reset_mocks()
-        self.assertEqual(False, self.pm.process_events_and_cleanup_processes())
+        self.assertEqual(False, self.pm.do_turn())
         self._assertCallsEqual(self.m_iom, [call.process_events()])
         self._assertCallsEqual(
             m_waitpid,
@@ -773,7 +773,7 @@ class IOMuxTests (MockingTestCase):
 
         self.m_IOManager = self._make_mock()
         self.m_ProcessManager = self._make_mock()
-        self.m_ProcessManager.return_value.process_events_and_cleanup_processes.side_effect = [False]
+        self.m_ProcessManager.return_value.do_turn.side_effect = [False]
         self.iomux = IOMux(self.m_IOManager, self.m_ProcessManager)
 
     def test___init__behavior(self):
@@ -804,7 +804,7 @@ class IOMuxTests (MockingTestCase):
     def test_run_multiple_commands(self):
         self._reset_mocks()
 
-        self.m_ProcessManager.return_value.process_events_and_cleanup_processes.side_effect = [
+        self.m_ProcessManager.return_value.do_turn.side_effect = [
             True, True, False]
 
         argv0 = ['cat', '/etc/motd']
@@ -816,9 +816,9 @@ class IOMuxTests (MockingTestCase):
             self.m_ProcessManager,
             [call().start_subprocess(argv0),
              call().start_subprocess(argv1),
-             call().process_events_and_cleanup_processes(),
-             call().process_events_and_cleanup_processes(),
-             call().process_events_and_cleanup_processes()])
+             call().do_turn(),
+             call().do_turn(),
+             call().do_turn()])
 
         self._assertCallsEqual(
             self.m_IOManager,
