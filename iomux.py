@@ -716,8 +716,8 @@ class IOMuxTests (MockingTestCase):
         self._assertCallsEqual(
             self.m_IOManager,
             [call(),
-             call().add_source(sys.stdin.fileno(), sentinel.stdinSourceHandler),
-             call().add_sink(sys.stdout.fileno(), sentinel.stdoutSinkHandler)])
+             call().add_source(sys.stdin.fileno(), ArgIsInstance(LineBuffer)),
+             call().add_sink(sys.stdout.fileno(), ArgIsInstance(SinkBuffer))])
 
         self._assertCallsEqual(
             self.m_ProcessManager,
