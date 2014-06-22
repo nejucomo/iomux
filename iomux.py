@@ -217,7 +217,15 @@ class IOMux (object):
 
 class InputSplitter (object):
     def __init__(self, sinkbuffer, loglinebuffer):
-        raise NotImplementedError(`InputSplitter`)
+        self._sbuf = sinkbuffer
+        self._logbuf = loglinebuffer
+
+    def write_data(self, data):
+        self._sbuf.enqueue_data(data)
+        self._logbuf.write_data(data)
+
+    def finish(self):
+        self._logbuf.finish()
 
 
 class LineBuffer (object):
