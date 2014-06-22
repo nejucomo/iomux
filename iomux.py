@@ -27,12 +27,6 @@ SELECT_INTERVAL = 1.3
 BUFSIZE = 2**14
 
 
-def main(args = sys.argv[1:]):
-    iomux = IOMux()
-    opts = parse_args(iomux.run, args)
-    sys.exit(opts.mainfunc(opts))
-
-
 # Argument parsing:
 def parse_args(iomuxrun, args):
     p = argparse.ArgumentParser(
@@ -943,6 +937,30 @@ class TimestamperTests (MockingTestCase):
         for _ in range(2):
             self.assertEqual('1970-01-01 00:00:00+0000', ts())
 
+
+class mainTests (MockingTestCase):
+    def test_main(self):
+        m_exit = self._patch('sys.exit')
+        m_IOMux = self._make_mock()
+        m_IOMux.return_value.run.return_value = sentinel.exitstatus
+
+        main(['echo', 'hello', 'world'], m_IOMux)
+
+        self._assertCallsEqual(
+            m_exit,
+            [call(sentinel.exitstatus)])
+
+        self._assertCallsEqual(
+            m_IOMux,
+            [call(),
+             call().run([['echo', 'hello', 'world']])])
+
+
+# Main:
+def main(args = sys.argv[1:], _IOMux=IOMux):
+    iomux = _IOMux()
+    opts = parse_args(iomux.run, args)
+    sys.exit(opts.mainfunc(opts))
 
 
 if __name__ == '__main__':
