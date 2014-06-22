@@ -491,7 +491,7 @@ class IOManagerTests (MockingTestCase):
 
         self._assertCallsEqual(m_select, [call([rfd], [], [], SELECT_INTERVAL)])
         self._assertCallsEqual(m_read, [call.read(rfd, BUFSIZE)])
-        self._assertCallsEqual(m_out, [call.write('banana')])
+        self._assertCallsEqual(m_out, [call.write_data('banana')])
         self.assertEqual(True, cont)
 
     def test_read_close(self):
@@ -508,7 +508,7 @@ class IOManagerTests (MockingTestCase):
 
         self._assertCallsEqual(m_select, [call([rfd], [], [], SELECT_INTERVAL)])
         self._assertCallsEqual(m_read, [call.read(rfd, BUFSIZE)])
-        self._assertCallsEqual(m_out, [call.close()])
+        self._assertCallsEqual(m_out, [call.finish()])
         self.assertEqual(False, cont)
 
     def test_write_complete(self):
