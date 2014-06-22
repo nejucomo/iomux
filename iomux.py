@@ -382,6 +382,8 @@ class MockingTestCase (unittest.TestCase):
                 self.assertEqual(
                     mockcall, expectedcall,
                     'Arg %d:\n%s\n  !=\n%s' % (i, pformat(mockcall), pformat(expectedcall)))
+            except AssertionError, e:
+                raise
             except Exception, e:
                 e.args += ('Internal unittesting exception; vars:', i, mockcall, expectedcall)
                 raise
