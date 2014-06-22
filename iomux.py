@@ -121,7 +121,7 @@ class ProcessManager (object):
 
         writers = []
         for streamtag in '*OE':
-            fmtwriter = FormatWriter(
+            fmtwriter = MessageFormatter(
                 self._out,
                 DEFAULT_TEMPLATE,
                 time=Timestamper(),
@@ -229,7 +229,7 @@ class WriteFileFilter (object):
         self._f.close()
 
 
-class FormatWriter (WriteFileFilter):
+class MessageFormatter (WriteFileFilter):
     """I act like a file, but format each write according to template and generated parameters."""
     def __init__(self, outstream, template, **paramgens):
         WriteFileFilter.__init__(self, outstream)
@@ -779,45 +779,28 @@ class IOMuxTests (MockingTestCase):
             [])
 
 
-class WriteFileFilterTests (MockingTestCase):
-    def test_writefilefilter(self):
-        m_file = self._make_mock()
-
-        wff = WriteFileFilter(m_file)
-        wff.write('foo')
-        wff.write('bar')
-        wff.flush()
-        wff.write('quz')
-        wff.close()
-
-        self._assertCallsEqual(
-            m_file,
-            [call.write('foo'),
-             call.write('bar'),
-             call.flush(),
-             call.write('quz'),
-             call.close()])
-
-
-class FormatWriterTests (MockingTestCase):
+class MessageFormatterTests (MockingTestCase):
     def test_format_writer(self):
         def counter():
             counter.c += 1
             return counter.c
         counter.c = 0
 
-        f = self._make_mock()
+        m_sinkbuf = self._make_mock()
 
-        fw = FormatWriter(f, '{const} {counter} {message}', const=lambda : '<A constant>', counter=counter)
-        fw.write('foo')
-        fw.write('bar')
-        fw.close()
+        fw = MessageFormatter(
+            m_sinkbuf,
+            '{const} {counter} {message}',
+            const=lambda : '<A constant>',
+            counter=counter)
+
+        fw.write_message('foo')
+        fw.write_message('bar')
 
         self._assertCallsEqual(
-            f,
-            [call.write('<A constant> 1 foo\n'),
-             call.write('<A constant> 2 bar\n'),
-             call.close()])
+            m_sinkbuf,
+            [call.enqueue_data('<A constant> 1 foo\n'),
+             call.enqueue_data('<A constant> 2 bar\n')])
 
 
 class TimestamperTests (MockingTestCase):
@@ -832,32 +815,45 @@ class TimestamperTests (MockingTestCase):
 
 class LineBufferTests (MockingTestCase):
     def test_flush_buffer(self):
-        f = self._make_mock()
+        m_formatter = self._make_mock()
 
-        lb = LineBuffer(f)
-        lb.write('foo')
-        lb.write('bar\nquz')
-        lb.flush()
-
+        lb = LineBuffer(m_formatter)
+        lb.write_data('foo')
         self._assertCallsEqual(
-            f,
-            [call.write('foobar\n'),
-             call.write('quz'),
-             call.flush()])
+            m_formatter,
+            [])
 
-    def test_flush_empty_buffer(self):
-        f = self._make_mock()
-
-        lb = LineBuffer(f)
-        lb.write('foo')
-        lb.write('bar\nquz\n')
-        lb.flush()
-
+        lb.write_data('bar\nquz')
         self._assertCallsEqual(
-            f,
-            [call.write('foobar\n'),
-             call.write('quz\n'),
-             call.flush()])
+            m_formatter,
+            [call.write_message('foobar')])
+
+        lb.finish()
+        self._assertCallsEqual(
+            m_formatter,
+            [call.write_message('foobar'),
+             call.write_message('quz')])
+
+    def test_finish_empty_buffer(self):
+        m_formatter = self._make_mock()
+
+        lb = LineBuffer(m_formatter)
+        lb.write_data('foo')
+        self._assertCallsEqual(
+            m_formatter,
+            [])
+
+        lb.write_data('bar\nquz\n')
+        self._assertCallsEqual(
+            m_formatter,
+            [call.write_message('foobar'),
+             call.write_message('quz')])
+
+        lb.finish()
+        self._assertCallsEqual(
+            m_formatter,
+            [call.write_message('foobar'),
+             call.write_message('quz')])
 
 
 class SinkBufferTests (MockingTestCase):
@@ -866,10 +862,10 @@ class SinkBufferTests (MockingTestCase):
 
         self.assertEqual(False, sb.pending())
 
-        sb.write('foo')
+        sb.enqueue_data('foo')
         self.assertEqual(True, sb.pending())
 
-        sb.write('bar\n')
+        sb.enqueue_data('bar\n')
         self.assertEqual(True, sb.pending())
 
         self.assertEqual('foo', sb.take())
@@ -881,9 +877,8 @@ class SinkBufferTests (MockingTestCase):
         sb.put_back('ar\n')
         self.assertEqual(True, sb.pending())
 
-        sb.write('quz')
-        sb.flush() # No op.
-        sb.write('wux')
+        sb.enqueue_data('quz')
+        sb.enqueue_data('wux')
 
         self.assertEqual('ar\n', sb.take())
         self.assertEqual(True, sb.pending())
@@ -899,9 +894,6 @@ class SinkBufferTests (MockingTestCase):
 
         sb.close()
         self.assertEqual(False, sb.pending())
-
-        # Invariant violation:
-        self.assertRaises(AssertionError, sb.write, 'stuff')
 
 
 
