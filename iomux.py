@@ -160,10 +160,13 @@ class ProcessManager (object):
 class IOManager (object):
     def __init__(self):
         self._sources = {} # { readadblefd -> writablefile }
+        self._impermanents = set() # { readablefd } ; do not exit until empty.
         self._sinks = {} # { writablefd -> SinkBuffer }
 
-    def add_source(self, rfd, sourcehandler):
+    def add_source(self, rfd, sourcehandler, permanent):
         self._sources[rfd] = sourcehandler
+        if not permanent:
+            self._impermanents.add(rfd)
 
     def add_sink(self, wfd, sinkbuffer):
         self._sinks[wfd] = sinkbuffer
@@ -184,6 +187,7 @@ class IOManager (object):
             else:
                 shandler.finish()
                 del self._sources[rfd]
+                self._impermanents.discard(rfd)
 
         for wfd in wfds:
             sinkbuf = self._sinks[wfd]
@@ -196,7 +200,9 @@ class IOManager (object):
                 if written < len(data):
                     sinkbuf.put_back(data[written:])
 
-        return len(self._sources) + len(self._sinks) > 0
+        # BUG: We never remove sinkbuffers (or rfds) when a child process exits,
+        # so this will always return true:
+        return len(self._impermanents) + len(self._sinks) > 0
 
 
 class IOMux (object):
@@ -216,7 +222,7 @@ class IOMux (object):
                     pid=lambda _pid=os.getpid(): _pid,
                     stream=lambda : 'I')))
 
-        self._iom.add_source(sys.stdin.fileno(), insplitter)
+        self._iom.add_source(sys.stdin.fileno(), insplitter, permanent=True)
         self._iom.add_sink(sys.stdout.fileno(), outsink)
 
         self._pm = _ProcessManager(self._iom, outsink, proc0sink)
