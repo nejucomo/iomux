@@ -271,7 +271,29 @@ class LineBuffer (WriteFileFilter):
 
 class SinkBuffer (object):
     def __init__(self):
-        raise NotImplementedError(`SinkBuffer`)
+        self._buf = []
+
+    def pending(self):
+        return bool(self._buf)
+
+    def take(self):
+        assert self.pending(), 'Precondition violation: SinkBuffer.take() on empty buffer.'
+        return self._buf.pop(0)
+
+    def put_back(self, data):
+        return self._buf.insert(0, data)
+
+    # Writable file interface:
+    def write(self, data):
+        assert self._buf is not None, 'Invariant violation: write after close.'
+        self._buf.append(data)
+
+    def flush(self):
+        assert self._buf is not None, 'Invariant violation: flush after close.'
+        pass
+
+    def close(self):
+        self._buf = None
 
 
 # Unit tests:
@@ -858,7 +880,7 @@ class SinkBufferTests (MockingTestCase):
         self.assertEqual(False, sb.pending())
 
         # Invariant violation:
-        self.assertRaises(AssertionError, sb.write)
+        self.assertRaises(AssertionError, sb.write, 'stuff')
 
 
 
