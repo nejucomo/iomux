@@ -215,28 +215,6 @@ class IOMux (object):
             pass
 
 
-class MessageFormatter (object):
-    """I format messages and pass the result to a sinkbuffer, according to param generaters."""
-    def __init__(self, sinkbuffer, template, **paramgens):
-        self._sbuf = sinkbuffer
-        self._tmpl = template
-        self._pgens = paramgens
-
-    def write_message(self, message):
-        params = dict( (k, f()) for (k, f) in self._pgens.iteritems() )
-        params['message'] = message
-        data = self._tmpl.format(**params)
-        self._sbuf.enqueue_data(data + '\n')
-
-
-class Timestamper (object):
-    def __init__(self, format=ISO8601):
-        self.format = format
-
-    def __call__(self):
-        return time.strftime(self.format, time.gmtime(time.time()))
-
-
 class LineBuffer (object):
     """I enqueue data, then pass single lines to my downstream MessageFormatter."""
     def __init__(self, messageformatter):
@@ -259,6 +237,20 @@ class LineBuffer (object):
             self._buf = None
 
 
+class MessageFormatter (object):
+    """I format messages and pass the result to a sinkbuffer, according to param generaters."""
+    def __init__(self, sinkbuffer, template, **paramgens):
+        self._sbuf = sinkbuffer
+        self._tmpl = template
+        self._pgens = paramgens
+
+    def write_message(self, message):
+        params = dict( (k, f()) for (k, f) in self._pgens.iteritems() )
+        params['message'] = message
+        data = self._tmpl.format(**params)
+        self._sbuf.enqueue_data(data + '\n')
+
+
 class SinkBuffer (object):
     def __init__(self):
         self._buf = []
@@ -277,6 +269,14 @@ class SinkBuffer (object):
     # Producer interface (for data coming into this process):
     def enqueue_data(self, data):
         self._buf.append(data)
+
+
+class Timestamper (object):
+    def __init__(self, format=ISO8601):
+        self.format = format
+
+    def __call__(self):
+        return time.strftime(self.format, time.gmtime(time.time()))
 
 
 # Unit tests:
@@ -760,40 +760,6 @@ class IOMuxTests (MockingTestCase):
             [])
 
 
-class MessageFormatterTests (MockingTestCase):
-    def test_format_writer(self):
-        def counter():
-            counter.c += 1
-            return counter.c
-        counter.c = 0
-
-        m_sinkbuf = self._make_mock()
-
-        fw = MessageFormatter(
-            m_sinkbuf,
-            '{const} {counter} {message}',
-            const=lambda : '<A constant>',
-            counter=counter)
-
-        fw.write_message('foo')
-        fw.write_message('bar')
-
-        self._assertCallsEqual(
-            m_sinkbuf,
-            [call.enqueue_data('<A constant> 1 foo\n'),
-             call.enqueue_data('<A constant> 2 bar\n')])
-
-
-class TimestamperTests (MockingTestCase):
-    def test_timestamper(self):
-        m_time = self._patch('time.time')
-        m_time.return_value = 0
-
-        ts = Timestamper(ISO8601)
-        for _ in range(2):
-            self.assertEqual('1970-01-01 00:00:00+0000', ts())
-
-
 class LineBufferTests (MockingTestCase):
     def test_flush_buffer(self):
         m_formatter = self._make_mock()
@@ -837,6 +803,30 @@ class LineBufferTests (MockingTestCase):
              call.write_message('quz')])
 
 
+class MessageFormatterTests (MockingTestCase):
+    def test_format_writer(self):
+        def counter():
+            counter.c += 1
+            return counter.c
+        counter.c = 0
+
+        m_sinkbuf = self._make_mock()
+
+        fw = MessageFormatter(
+            m_sinkbuf,
+            '{const} {counter} {message}',
+            const=lambda : '<A constant>',
+            counter=counter)
+
+        fw.write_message('foo')
+        fw.write_message('bar')
+
+        self._assertCallsEqual(
+            m_sinkbuf,
+            [call.enqueue_data('<A constant> 1 foo\n'),
+             call.enqueue_data('<A constant> 2 bar\n')])
+
+
 class SinkBufferTests (MockingTestCase):
     def test_sink_buffer(self):
         sb = SinkBuffer()
@@ -875,6 +865,16 @@ class SinkBufferTests (MockingTestCase):
 
         sb.close()
         self.assertEqual(False, sb.pending())
+
+
+class TimestamperTests (MockingTestCase):
+    def test_timestamper(self):
+        m_time = self._patch('time.time')
+        m_time.return_value = 0
+
+        ts = Timestamper(ISO8601)
+        for _ in range(2):
+            self.assertEqual('1970-01-01 00:00:00+0000', ts())
 
 
 
