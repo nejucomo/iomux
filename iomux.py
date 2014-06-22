@@ -62,6 +62,7 @@ def parse_args(iomuxrun, args):
 
     opts = p.parse_args(args)
     opts.mainfunc = None
+    mfoptname = None
 
     for optname in ['--unit-test', '--unit-test-without-coverage', 'COMMANDS']:
         dest = optname.lstrip('-').replace('-', '_')
@@ -70,10 +71,10 @@ def parse_args(iomuxrun, args):
             if optname == 'COMMANDS':
                 optval = iomuxrun
             if opts.mainfunc is None:
-                optval.optionname = optname
+                mfoptname = optname
                 opts.mainfunc = optval
             else:
-                p.error('%r and %r are mutually exclusive.' % (opts.mainfunc.optionname, optname))
+                p.error('%r and %r are mutually exclusive.' % (mfoptname, optname))
 
     if opts.mainfunc is iomuxrun:
         # Split subcommands into separate arguments lists, and check
