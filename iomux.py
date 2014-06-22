@@ -470,13 +470,26 @@ class IOManagerTests (MockingTestCase):
 
         self.m = IOManager()
 
-    def test_process_events_timeout(self):
+    def test_process_events_timeout_permanent(self):
         m_select = self._patch('select.select')
         rfd = 42
         m_out = self._make_mock()
         m_select.return_value = ([], [], [])
 
-        self.m.add_source(rfd, m_out)
+        self.m.add_source(rfd, m_out, permanent=True)
+        cont = self.m.process_events()
+
+        self._assertCallsEqual(m_select, [call([rfd], [], [], SELECT_INTERVAL)])
+        self._assertCallsEqual(m_out, [])
+        self.assertEqual(False, cont)
+
+    def test_process_events_timeout_impermanent(self):
+        m_select = self._patch('select.select')
+        rfd = 42
+        m_out = self._make_mock()
+        m_select.return_value = ([], [], [])
+
+        self.m.add_source(rfd, m_out, permanent=False)
         cont = self.m.process_events()
 
         self._assertCallsEqual(m_select, [call([rfd], [], [], SELECT_INTERVAL)])
@@ -492,7 +505,7 @@ class IOManagerTests (MockingTestCase):
         m_select.return_value = ([rfd], [], [])
         m_read.return_value = 'banana'
 
-        self.m.add_source(rfd, m_out)
+        self.m.add_source(rfd, m_out, permanent=False)
         cont = self.m.process_events()
 
         self._assertCallsEqual(m_select, [call([rfd], [], [], SELECT_INTERVAL)])
@@ -509,7 +522,7 @@ class IOManagerTests (MockingTestCase):
         m_select.return_value = ([rfd], [], [])
         m_read.return_value = ''
 
-        self.m.add_source(rfd, m_out)
+        self.m.add_source(rfd, m_out, permanent=False)
         cont = self.m.process_events()
 
         self._assertCallsEqual(m_select, [call([rfd], [], [], SELECT_INTERVAL)])
@@ -537,7 +550,7 @@ class IOManagerTests (MockingTestCase):
             [call.pending(),
              call.take()])
         self._assertCallsEqual(m_write, [call(wfd, 'foobar')])
-        self.assertEqual(True, cont)
+        self.assertEqual(False, cont)
 
     def test_write_partial(self):
         m_select = self._patch('select.select')
