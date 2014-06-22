@@ -105,8 +105,10 @@ def parse_args(iomux, args):
 
 # Main application:
 class ProcessManager (object):
-    def __init__(self, iomanager):
+    def __init__(self, iomanager, outwriter, stdinsinkbuffer):
         self._iom = iomanager
+        self._out = outwriter
+        self._insink = stdinsinkbuffer
         self._procs = {} # { pid -> proc }
 
     def start_subprocess(self, args):
@@ -115,12 +117,12 @@ class ProcessManager (object):
         if self._procs:
             os.close(p.stdin.fileno())
         else:
-            self._iom.add_sink(p.stdin.fileno(), sentinel.UnimplementedSinkHandler)
+            self._iom.add_sink(p.stdin.fileno(), self._insink)
 
         writers = []
-        for streamtag in 'IOE':
+        for streamtag in '*OE':
             fmtwriter = FormatWriter(
-                sentinel.UnimplementedSinkBuffer,
+                self._out,
                 DEFAULT_TEMPLATE,
                 time=Timestamper(),
                 pid=lambda : p.pid,
@@ -201,7 +203,7 @@ class IOMux (object):
         self._iom.add_source(sys.stdin.fileno(), sentinel.stdinSourceHandler)
         self._iom.add_sink(sys.stdout.fileno(), sentinel.stdoutSinkHandler)
 
-        self._pm = _ProcessManager(self._iom)
+        self._pm = _ProcessManager(self._iom, sentinel.stdoutWriter, sentinel.stdinSinkBuffer)
 
     def run(self, commands):
         assert len(commands) > 0, 'No commands passed: %r' % (commands,)
@@ -260,7 +262,7 @@ class LineBuffer (WriteFileFilter):
         self._buf = lines.pop()
 
         for line in lines:
-            self._f.write(line + '\n')
+            self._f.write(line)
 
     def flush(self):
         if self._buf:
@@ -563,6 +565,15 @@ class ProcessManagerTests (MockingTestCase):
     def setUp(self):
         MockingTestCase.setUp(self)
 
+        # Deterministic time sequence:
+        def timectr():
+            i = 0
+            while True:
+                yield i
+                i += 1
+
+        self._patch('time.time').side_effect = timectr()
+
         self.m_iom = self._make_mock()
         self.m_stdoutwriter = self._make_mock()
         self.m_stdinsink = self._make_mock()
@@ -625,8 +636,8 @@ class ProcessManagerTests (MockingTestCase):
 
         self._assertCallsEqual(
             self.m_stdoutwriter,
-            [call.write("1970-01-01 00:00:00+0000:1001:*:Launching ['echo', 'hello', 'world']\n"),
-             call.write("1970-01-01 00:00:00+0000:1002:*:Launching ['date']\n")])
+            [call.write("1970-01-01 00:00:00+0000 1001 * Launching ['echo', 'hello', 'world']\n"),
+             call.write("1970-01-01 00:00:01+0000 1002 * Launching ['date']\n")])
 
     def test_start_subprocess(self):
         self._subtest_start_subprocess_twice()
