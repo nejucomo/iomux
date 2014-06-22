@@ -202,7 +202,13 @@ class IOManager (object):
 
         # BUG: We never remove sinkbuffers (or rfds) when a child process exits,
         # so this will always return true:
-        return len(self._impermanents) + len(self._sinks) > 0
+        if len(self._impermanents) > 0:
+            return True
+        else:
+            for sbuf in self._sinks.itervalues():
+                if sbuf.pending():
+                    return True
+            return False
 
 
 class IOMux (object):
