@@ -29,12 +29,12 @@ BUFSIZE = 2**14
 
 def main(args = sys.argv[1:]):
     iomux = IOMux()
-    opts = parse_args(iomux, args)
+    opts = parse_args(iomux.run, args)
     sys.exit(opts.mainfunc(opts))
 
 
 # Argument parsing:
-def parse_args(iomux, args):
+def parse_args(iomuxrun, args):
     p = argparse.ArgumentParser(
         description=DESCRIPTION,
         formatter_class=argparse.RawTextHelpFormatter)
@@ -68,14 +68,14 @@ def parse_args(iomux, args):
         optval = getattr(opts, dest)
         if optval:
             if optname == 'COMMANDS':
-                optval = iomux.run
+                optval = iomuxrun
             if opts.mainfunc is None:
                 optval.optionname = optname
                 opts.mainfunc = optval
             else:
                 p.error('%r and %r are mutually exclusive.' % (opts.mainfunc.optionname, optname))
 
-    if opts.mainfunc is iomux.run:
+    if opts.mainfunc is iomuxrun:
         # Split subcommands into separate arguments lists, and check
         # for empty commands (which are a usage error).
         cmds = []
@@ -392,13 +392,10 @@ class CommandlineArgumentTests (MockingTestCase):
     def setUp(self):
         MockingTestCase.setUp(self)
 
-        self.m_iomux = self._make_mock()
-        self.m_iomux.run = sentinel.IOMux_run
+        self.iomuxrun = IOMux().run
 
     def _parse_args(self, args):
-        result = parse_args(self.m_iomux, args)
-        self._assertCallsEqual(self.m_iomux, [])
-        return result
+        return parse_args(self.iomuxrun, args)
 
     def _capture_stdout_usage_info(self, args):
         assert type(args) is list, `args`
@@ -440,17 +437,17 @@ class CommandlineArgumentTests (MockingTestCase):
 
     def test_no_dash_dash_echo(self):
         opts = self._parse_args(['echo'])
-        self.assertIs(self.m_iomux.run, opts.mainfunc)
+        self.assertIs(self.iomuxrun, opts.mainfunc)
         self.assertEqual([['echo']], opts.COMMANDS)
 
     def test_multiple_commands(self):
         opts = self._parse_args(['echo', '-n', 'foo', '--', 'cat', 'bar'])
-        self.assertIs(self.m_iomux.run, opts.mainfunc)
+        self.assertIs(self.iomuxrun, opts.mainfunc)
         self.assertEqual([['echo', '-n', 'foo'], ['cat', 'bar']], opts.COMMANDS)
 
     def test_leading_dashdash(self):
         opts = self._parse_args(['--', 'echo', '-n', 'foo', '--', 'cat', 'bar'])
-        self.assertIs(self.m_iomux.run, opts.mainfunc)
+        self.assertIs(self.iomuxrun, opts.mainfunc)
         self.assertEqual([['echo', '-n', 'foo'], ['cat', 'bar']], opts.COMMANDS)
 
     def test_empty_command_trailing_dashdash(self):
