@@ -554,7 +554,8 @@ class IOManagerTests (MockingTestCase):
         self._assertCallsEqual(
             m_sinkbuffer,
             [call.pending(),
-             call.take()])
+             call.take(),
+             call.pending()])
         self._assertCallsEqual(m_write, [call(wfd, 'foobar')])
         self.assertEqual(False, cont)
 
@@ -577,7 +578,8 @@ class IOManagerTests (MockingTestCase):
             m_sinkbuffer,
             [call.pending(),
              call.take(),
-             call.put_back('bar')])
+             call.put_back('bar'),
+             call.pending()])
         self._assertCallsEqual(m_write, [call(wfd, 'foobar')])
         self.assertEqual(True, cont)
 
