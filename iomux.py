@@ -322,6 +322,22 @@ def run_unit_tests_without_coverage(opts):
     unittest.main(argv=sys.argv[:1], verbosity=2)
 
 
+# Unit test helper code:
+class EQCB (object):
+    """Create an object where obj.__eq__(other) is defined as eqcb(other)."""
+    def __init__(self, eqcb, repstr):
+        self._eqcb = eqcb
+        self._repstr = repstr
+
+    def __eq__(self, other):
+        return self._eqcb(other)
+
+    def __repr__(self):
+        return self._repstr
+
+# An EQCB which is true whenever the comparee is of a given type:
+ArgIsInstance = lambda T: EQCB(lambda x: isinstance(x, T), 'ArgIsInstance(%s)' % (T.__name__,))
+
 
 class MockingTestCase (unittest.TestCase):
     def setUp(self):
@@ -597,22 +613,9 @@ class ProcessManagerTests (MockingTestCase):
             m_close,
             [call(sentinel.proc2_stdin)])
 
-        class EQCB (object):
-            def __init__(self, eqcb, repstr):
-                self._eqcb = eqcb
-                self._repstr = repstr
-
-            def __eq__(self, other):
-                return self._eqcb(other)
-
-            def __repr__(self):
-                return self._repstr
-
-        ArgIsInstance = lambda T: EQCB(lambda x: isinstance(x, T), 'ArgIsInstance(%s)' % (T.__name__,))
-
         self._assertCallsEqual(
             self.m_iom,
-            [call.add_sink(sentinel.proc1_stdin, EQCB(lambda _: True, 'ANY')), # TODO: Spec/Impl a sink handler type.
+            [call.add_sink(sentinel.proc1_stdin, EQCB(SinkBuffer)),
              call.add_source(sentinel.proc1_stdout, ArgIsInstance(LineBuffer)),
              call.add_source(sentinel.proc1_stderr, ArgIsInstance(LineBuffer)),
              call.add_source(sentinel.proc2_stdout, ArgIsInstance(LineBuffer)),
