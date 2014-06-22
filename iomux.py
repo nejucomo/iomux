@@ -674,7 +674,7 @@ class ProcessManagerTests (MockingTestCase):
             (0, 0),
             # Loop 3:
             (self.m_proc1.pid, 0),
-            OSError('Mock of: [Errno 10] No child processes'),
+            OSError(errno.ECHILD, 'Mock of: [Errno 10] No child processes'),
             ]
 
         self._reset_mocks()
@@ -713,7 +713,7 @@ class ProcessManagerTests (MockingTestCase):
             # Loop 2:
             (self.m_proc2.pid, 0),
             (self.m_proc1.pid, 0),
-            OSError('Mock of: [Errno 10] No child processes'),
+            OSError(errno.ECHILD, 'Mock of: [Errno 10] No child processes'),
             ]
 
         self._reset_mocks()
