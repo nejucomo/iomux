@@ -215,32 +215,18 @@ class IOMux (object):
             pass
 
 
-class WriteFileFilter (object):
-    def __init__(self, outstream):
-        self._f = outstream
-
-    def write(self, data):
-        self._f.write(data)
-
-    def flush(self):
-        self._f.flush()
-
-    def close(self):
-        self._f.close()
-
-
-class MessageFormatter (WriteFileFilter):
-    """I act like a file, but format each write according to template and generated parameters."""
-    def __init__(self, outstream, template, **paramgens):
-        WriteFileFilter.__init__(self, outstream)
+class MessageFormatter (object):
+    """I format messages and pass the result to a sinkbuffer, according to param generaters."""
+    def __init__(self, sinkbuffer, template, **paramgens):
+        self._sbuf = sinkbuffer
         self._tmpl = template
         self._pgens = paramgens
 
-    def write(self, message):
+    def write_message(self, message):
         params = dict( (k, f()) for (k, f) in self._pgens.iteritems() )
         params['message'] = message
         data = self._tmpl.format(**params)
-        self._f.write(data + '\n')
+        self._sbuf.enqueue_data(data + '\n')
 
 
 class Timestamper (object):
@@ -251,32 +237,35 @@ class Timestamper (object):
         return time.strftime(self.format, time.gmtime(time.time()))
 
 
-class LineBuffer (WriteFileFilter):
-    """I act like a writable file, but I always call my downstream writer with exact single lines."""
-    def __init__(self, outstream):
-        WriteFileFilter.__init__(self, outstream)
+class LineBuffer (object):
+    """I enqueue data, then pass single lines to my downstream MessageFormatter."""
+    def __init__(self, messageformatter):
+        self._mf = messageformatter
         self._buf = ''
 
-    def write(self, data):
+    def write_data(self, data):
         lines = (self._buf + data).split('\n')
         self._buf = lines.pop()
 
         for line in lines:
-            self._f.write(line)
+            # Note: messages do not contain '\n':
+            self._mf.write_message(line)
 
-    def flush(self):
+    def finish(self):
         if self._buf:
-            self._f.write(self._buf)
-            self._buf = ''
-        self._f.flush()
+            # BUG: There's no way for the iomux output reader to
+            # distinguish between a final newline or a lack of one:
+            self._mf.write_message(self._buf)
+            self._buf = None
 
 
 class SinkBuffer (object):
     def __init__(self):
         self._buf = []
 
+    # Consumer interface (for data going out of this process):
     def pending(self):
-        return bool(self._buf)
+        return len(self._buf) > 0
 
     def take(self):
         assert self.pending(), 'Precondition violation: SinkBuffer.take() on empty buffer.'
@@ -285,17 +274,9 @@ class SinkBuffer (object):
     def put_back(self, data):
         return self._buf.insert(0, data)
 
-    # Writable file interface:
-    def write(self, data):
-        assert self._buf is not None, 'Invariant violation: write after close.'
+    # Producer interface (for data coming into this process):
+    def enqueue_data(self, data):
         self._buf.append(data)
-
-    def flush(self):
-        assert self._buf is not None, 'Invariant violation: flush after close.'
-        pass
-
-    def close(self):
-        self._buf = None
 
 
 # Unit tests:
