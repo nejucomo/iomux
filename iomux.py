@@ -138,7 +138,7 @@ class ProcessManager (object):
         self._iom.add_source(p.stdout.fileno(), outwriter)
         self._iom.add_source(p.stderr.fileno(), errwriter)
 
-        infowriter.write_data('Launched: %r\n' % (args,))
+        infowriter.write_data('Launched %r\n' % (args,))
 
         self._procs[p.pid] = p
 
