@@ -384,9 +384,13 @@ class MockingTestCase (unittest.TestCase):
                 pformat(expectedcalls), len(expectedcalls)))
 
         for i, (mockcall, expectedcall) in enumerate(zip(mockcalls, expectedcalls)):
-            self.assertEqual(
-                mockcall, expectedcall,
-                'Arg %d:\n%s\n  !=\n%s' % (i, pformat(mockcall), pformat(expectedcall)))
+            try:
+                self.assertEqual(
+                    mockcall, expectedcall,
+                    'Arg %d:\n%s\n  !=\n%s' % (i, pformat(mockcall), pformat(expectedcall)))
+            except Exception, e:
+                e.args += ('Internal unittesting exception; vars:', i, mockcall, expectedcall)
+                raise
 
 
 class CommandlineArgumentTests (MockingTestCase):
