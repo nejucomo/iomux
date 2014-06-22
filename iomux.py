@@ -215,6 +215,11 @@ class IOMux (object):
             pass
 
 
+class InputSplitter (object):
+    def __init__(self, sinkbuffer, loglinebuffer):
+        raise NotImplementedError(`InputSplitter`)
+
+
 class LineBuffer (object):
     """I enqueue data, then pass single lines to my downstream MessageFormatter."""
     def __init__(self, messageformatter):
@@ -758,6 +763,36 @@ class IOMuxTests (MockingTestCase):
         self._assertCallsEqual(
             self.m_IOManager,
             [])
+
+
+class InputSplitterTests (MockingTestCase):
+    def test_input_splitter(self):
+        m_sbuf = self._make_mock()
+        m_lbuf = self._make_mock()
+
+        splitter = InputSplitter(m_sbuf, m_lbuf)
+
+        splitter.write_data('foo')
+
+        self._assertCallsEqual(
+            m_sbuf,
+            [call.enqueue_data('foo')])
+
+        self._assertCallsEqual(
+            m_lbuf,
+            [call.write_data('foo')])
+
+        self._reset_mocks()
+
+        splitter.finish()
+
+        self._assertCallsEqual(
+            m_sbuf,
+            [])
+
+        self._assertCallsEqual(
+            m_lbuf,
+            [call.finish()])
 
 
 class LineBufferTests (MockingTestCase):
