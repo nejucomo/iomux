@@ -615,7 +615,7 @@ class ProcessManagerTests (MockingTestCase):
 
         self._assertCallsEqual(
             self.m_iom,
-            [call.add_sink(sentinel.proc1_stdin, EQCB(SinkBuffer)),
+            [call.add_sink(sentinel.proc1_stdin, ArgIsInstance(SinkBuffer)),
              call.add_source(sentinel.proc1_stdout, ArgIsInstance(LineBuffer)),
              call.add_source(sentinel.proc1_stderr, ArgIsInstance(LineBuffer)),
              call.add_source(sentinel.proc2_stdout, ArgIsInstance(LineBuffer)),
