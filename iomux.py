@@ -8,6 +8,7 @@ import select
 import argparse
 import unittest
 import subprocess
+from pprint import pformat
 import mock
 from mock import call, sentinel
 
@@ -359,8 +360,18 @@ class MockingTestCase (unittest.TestCase):
         for (_, m) in self._patchers:
             m.reset_mock()
 
-    def _assertCallsEqual(self, mockobj, calls):
-        self.assertEqual(mockobj._mock_mock_calls, calls)
+    def _assertCallsEqual(self, mockobj, expectedcalls):
+        mockcalls = mockobj._mock_mock_calls
+        self.assertEqual(
+            len(mockcalls), len(expectedcalls),
+            'len(%s) == %r != len(%s) == %r' % (
+                pformat(mockcalls), len(mockcalls),
+                pformat(expectedcalls), len(expectedcalls)))
+
+        for i, (mockcall, expectedcall) in enumerate(zip(mockcalls, expectedcalls)):
+            self.assertEqual(
+                mockcall, expectedcall,
+                'Arg %d: %s != %s' % (i, pformat(mockcall), pformat(expectedcall)))
 
 
 class CommandlineArgumentTests (MockingTestCase):
