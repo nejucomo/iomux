@@ -156,8 +156,8 @@ class IOManager (object):
         self._sources = {} # { readadblefd -> writablefile }
         self._sinks = {} # { writablefd -> SinkBuffer }
 
-    def add_source(self, rfd, outfile):
-        self._sources[rfd] = outfile
+    def add_source(self, rfd, sourcehandler):
+        self._sources[rfd] = sourcehandler
 
     def add_sink(self, wfd, sinkbuffer):
         self._sinks[wfd] = sinkbuffer
@@ -171,12 +171,12 @@ class IOManager (object):
         assert efds == [], 'select() postcondition violation: efds == %r' % (efds,)
 
         for rfd in rfds:
-            wfile = self._sources[rfd]
+            shandler = self._sources[rfd]
             buf = os.read(rfd, BUFSIZE)
             if buf:
-                wfile.write(buf)
+                shandler.write_data(buf)
             else:
-                wfile.close()
+                shandler.finish()
                 del self._sources[rfd]
 
         for wfd in wfds:
