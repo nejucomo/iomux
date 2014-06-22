@@ -371,7 +371,7 @@ class MockingTestCase (unittest.TestCase):
         for i, (mockcall, expectedcall) in enumerate(zip(mockcalls, expectedcalls)):
             self.assertEqual(
                 mockcall, expectedcall,
-                'Arg %d: %s != %s' % (i, pformat(mockcall), pformat(expectedcall)))
+                'Arg %d:\n%s\n  !=\n%s' % (i, pformat(mockcall), pformat(expectedcall)))
 
 
 class CommandlineArgumentTests (MockingTestCase):
