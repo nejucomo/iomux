@@ -564,8 +564,9 @@ class ProcessManagerTests (MockingTestCase):
         MockingTestCase.setUp(self)
 
         self.m_iom = self._make_mock()
+        self.m_stdoutwriter = self._make_mock()
         self.m_stdinsink = self._make_mock()
-        self.pm = ProcessManager(self.m_iom, self.m_stdinsink)
+        self.pm = ProcessManager(self.m_iom, self.m_stdoutwriter, self.m_stdinsink)
 
         self.argv1 = ['echo', 'hello', 'world']
         self.argv2 = ['date']
@@ -621,6 +622,11 @@ class ProcessManagerTests (MockingTestCase):
              call.add_source(sentinel.proc1_stderr, ArgIsInstance(LineBuffer)),
              call.add_source(sentinel.proc2_stdout, ArgIsInstance(LineBuffer)),
              call.add_source(sentinel.proc2_stderr, ArgIsInstance(LineBuffer))])
+
+        self._assertCallsEqual(
+            self.m_stdoutwriter,
+            [call.write("1970-01-01 00:00:00+0000:1001:*:Launching ['echo', 'hello', 'world']\n"),
+             call.write("1970-01-01 00:00:00+0000:1002:*:Launching ['date']\n")])
 
     def test_start_subprocess(self):
         self._subtest_start_subprocess_twice()
