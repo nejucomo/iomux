@@ -140,15 +140,21 @@ class ProcessManager (object):
     def process_events_and_cleanup_processes(self):
         iocont = self._iom.process_events()
 
-        (pid, status) = os.waitpid(-1, os.WNOHANG)
+        (pid, status) = self._waitpid()
         while (pid, status) != (0, 0):
             # TODO: log exit status!
             del self._procs[pid]
 
-            (pid, status) = os.waitpid(-1, os.WNOHANG)
+            (pid, status) = self._waitpid()
 
         # Continue if there're open IO streams *or* running subprocesses:
         return iocont or len(self._procs) > 0
+
+    def _waitpid(self):
+        if len(self._procs) > 0:
+            return os.waitpid(-1, os.WNOHANG)
+        else:
+            return (0, 0)
 
 
 class IOManager (object):
