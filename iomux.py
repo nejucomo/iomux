@@ -960,7 +960,7 @@ class mainTests (MockingTestCase):
 def main(args = sys.argv[1:], _IOMux=IOMux):
     iomux = _IOMux()
     opts = parse_args(iomux.run, args)
-    sys.exit(opts.mainfunc(opts))
+    sys.exit(opts.mainfunc(opts.COMMANDS))
 
 
 if __name__ == '__main__':
