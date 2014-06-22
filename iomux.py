@@ -674,7 +674,6 @@ class ProcessManagerTests (MockingTestCase):
             (0, 0),
             # Loop 3:
             (self.m_proc1.pid, 0),
-            OSError(errno.ECHILD, 'Mock of: [Errno 10] No child processes'),
             ]
 
         self._reset_mocks()
@@ -697,8 +696,7 @@ class ProcessManagerTests (MockingTestCase):
         self._assertCallsEqual(self.m_iom, [call.process_events()])
         self._assertCallsEqual(
             m_waitpid,
-            [call(-1, os.WNOHANG),
-             call(-1, os.WNOHANG)])
+            [call(-1, os.WNOHANG)])
 
     def test_process_events_and_cleanup_processes_timeout_and_success_exits_and_io_completes_last(self):
         self._subtest_start_subprocess_twice()
@@ -713,7 +711,6 @@ class ProcessManagerTests (MockingTestCase):
             # Loop 2:
             (self.m_proc2.pid, 0),
             (self.m_proc1.pid, 0),
-            OSError(errno.ECHILD, 'Mock of: [Errno 10] No child processes'),
             ]
 
         self._reset_mocks()
@@ -727,7 +724,6 @@ class ProcessManagerTests (MockingTestCase):
         self._assertCallsEqual(
             m_waitpid,
             [call(-1, os.WNOHANG),
-             call(-1, os.WNOHANG),
              call(-1, os.WNOHANG)])
 
         self._reset_mocks()
