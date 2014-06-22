@@ -201,10 +201,24 @@ class IOManager (object):
 class IOMux (object):
     def __init__(self, _IOManager=IOManager, _ProcessManager=ProcessManager):
         self._iom = _IOManager()
-        self._iom.add_source(sys.stdin.fileno(), sentinel.stdinSourceHandler)
-        self._iom.add_sink(sys.stdout.fileno(), sentinel.stdoutSinkHandler)
 
-        self._pm = _ProcessManager(self._iom, sentinel.stdoutWriter, sentinel.stdinSinkBuffer)
+        outsink = SinkBuffer()
+        proc0sink = SinkBuffer()
+
+        insplitter = InputSplitter(
+            proc0sink,
+            LineBuffer(
+                MessageFormatter(
+                    outsink,
+                    DEFAULT_TEMPLATE,
+                    time=Timestamper(),
+                    pid=lambda _pid=os.getpid(): _pid,
+                    stream=lambda : 'I')))
+
+        self._iom.add_source(sys.stdin.fileno(), insplitter)
+        self._iom.add_sink(sys.stdout.fileno(), outsink)
+
+        self._pm = _ProcessManager(self._iom, outsink, proc0sink)
 
     def run(self, commands):
         assert len(commands) > 0, 'No commands passed: %r' % (commands,)
@@ -744,7 +758,7 @@ class IOMuxTests (MockingTestCase):
 
         self._assertCallsEqual(
             self.m_ProcessManager,
-            [call(self.m_IOManager.return_value)])
+            [call(self.m_IOManager.return_value, ArgIsInstance(SinkBuffer), ArgIsInstance(SinkBuffer))])
 
     def test_run_no_commands(self):
         self._reset_mocks()
