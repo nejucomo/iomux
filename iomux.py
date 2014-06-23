@@ -668,13 +668,12 @@ class ProcessManagerTests (MockingTestCase):
 
         self._assertCallsEqual(
             self.m_proc2,
-            [call.stdin.fileno(),
-             call.stdout.fileno(),
+            [call.stdout.fileno(),
              call.stderr.fileno()])
 
         self._assertCallsEqual(
             m_close,
-            [call(sentinel.proc2_stdin)])
+            [])
 
         self._assertCallsEqual(
             self.m_iom,
