@@ -110,9 +110,7 @@ class ProcessManager (object):
     def start_subprocess(self, args):
         p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        if self._procs:
-            os.close(p.stdin.fileno())
-        else:
+        if len(self._procs) == 0:
             self._iom.add_sink(p.stdin.fileno(), self._insink)
 
         writers = []
