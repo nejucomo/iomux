@@ -548,7 +548,7 @@ class IOManagerTests (MockingTestCase):
 
         wfd = 42
         m_sinkbuffer = self._make_mock()
-        m_sinkbuffer.pending.return_value = True
+        m_sinkbuffer.pending.side_effect = [True, False]
         m_sinkbuffer.take.return_value = 'foobar'
         m_write.return_value = 6
         m_select.return_value = ([], [wfd], [])
