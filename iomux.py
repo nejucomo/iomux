@@ -23,7 +23,7 @@ with 0, otherwise it is the first non-zero child's status.
 
 DEFAULT_TEMPLATE = '{time} {pid} {stream} {message}'
 ISO8601 = '%Y-%m-%d %H:%M:%S%z'
-SELECT_INTERVAL = 1.3
+SELECT_INTERVAL = 0.17
 BUFSIZE = 2**14
 
 
