@@ -130,8 +130,8 @@ class ProcessManager (object):
 
         [infowriter, outwriter, errwriter] = writers
 
-        self._iom.add_source(p.stdout.fileno(), outwriter)
-        self._iom.add_source(p.stderr.fileno(), errwriter)
+        self._iom.add_source(p.stdout.fileno(), outwriter, permanent=False)
+        self._iom.add_source(p.stderr.fileno(), errwriter, permanent=False)
 
         infowriter.write_data('Launched %r\n' % (args,))
 
